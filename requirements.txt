@@ -1,0 +1,9 @@
+# Journal Engine (current) — stdlib only, no dependencies yet (sqlite3, json,
+# dataclasses are all built into Python 3.10+).
+
+# --- Coming in later modules, listed here so the file is ready ---
+# oandapyV20        # OANDA v20 REST API client (Data Engine, execution)
+# pandas            # candle data handling
+# numpy             # numeric ops
+# ta                # EMA / RSI / MACD / ATR indicators (Technical Engine)
+# river             # incremental/online ML (ML/Adaptation Layer)

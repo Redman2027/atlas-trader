@@ -1,0 +1,15 @@
+# Local database (personal trading data — don't commit this)
+data/*.db
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
+
+# Secrets — OANDA API keys, account IDs, etc.
+.env
+config/secrets.json

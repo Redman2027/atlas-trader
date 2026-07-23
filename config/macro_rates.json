@@ -1,0 +1,21 @@
+{
+  "_comment": "Update after each Fed / ECB rate decision. 'stance' is your read of the last statement's tone: hawkish, neutral, or dovish. Next meeting dates keep this from going stale silently.",
+  "USD": {
+    "central_bank": "Federal Reserve",
+    "current_rate": 3.75,
+    "rate_note": "Upper bound of target range, currently 3.50-3.75%",
+    "stance": "hawkish",
+    "stance_note": "Holding steady but flagged inflation/energy risk (Iran conflict); one cut still projected later in 2026 but timing uncertain",
+    "last_updated": "2026-07-21",
+    "next_meeting": "2026-07-29"
+  },
+  "EUR": {
+    "central_bank": "European Central Bank",
+    "current_rate": 2.25,
+    "rate_note": "Deposit facility rate, hiked 25bps from 2.00% effective 2026-06-17",
+    "stance": "hawkish",
+    "stance_note": "Actively tightening due to energy-driven inflation shock; 2026 headline inflation projected at 3%",
+    "last_updated": "2026-07-21",
+    "next_meeting": "2026-07-23"
+  }
+}
