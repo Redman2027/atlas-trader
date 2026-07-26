@@ -36,6 +36,8 @@ def run_analysis_cycle(
     tracked_quote: str = "USD",
     entry_pair: str = "EUR_USD",
     balance_cap: float = 2_000.0,
+    min_log_threshold: float | None = None,
+    trade_threshold: float | None = None,
 ) -> dict:
     """Run one full pass: fetch data -> Technical -> Currency Strength ->
     Macro -> Voting -> (if should_trade) Risk.
@@ -61,12 +63,19 @@ def run_analysis_cycle(
     macro_result = compute_macro_bias(tracked_base, tracked_quote)
 
     # 4. Voting/Confidence Engine
+    voting_kwargs = {}
+    if min_log_threshold is not None:
+        voting_kwargs["min_log_threshold"] = min_log_threshold
+    if trade_threshold is not None:
+        voting_kwargs["trade_threshold"] = trade_threshold
+
     voting_result = score_setup(
         macro_result,
         currency_strength_result,
         technical_bias_result,
         tracked_base=tracked_base,
         tracked_quote=tracked_quote,
+        **voting_kwargs,
     )
 
     result = {

@@ -35,9 +35,35 @@ Built module by module. Current progress:
       exists). `run_analysis_cycle()` orchestrates every module end to
       end (`atlas_trader/data_engine/`)
 
-**All 9 modules now exist and are wired together** — proven end-to-end
-via `MockDataProvider`. The only thing left before this runs on real
-market data is an OANDA API token.
+**All 9 modules exist, are wired together, and have been proven against
+real live OANDA data** (not just synthetic). The Journal Engine is now
+also automatically called by the loop below — nothing needs manual
+wiring anymore.
+
+## The Loop — `run_loop.py`
+
+This is what actually runs 24/5 on the dedicated PC. Each cycle:
+checks any open trade for a close (and lets the ML layer learn from
+it immediately), then runs one full analysis pass and opens a trade
+if warranted (skipping if already in a position).
+
+```bash
+python run_loop.py --mock     # synthetic data, no credentials needed
+python run_loop.py            # real OANDA data (needs config/oanda_credentials.json)
+```
+
+**Windows deployment (once ready to run continuously):**
+- **Task Scheduler** — simplest option. Create a task that runs
+  `python run_loop.py` at startup, set it to restart on failure.
+- **NSSM** (nssm.cc) — installs it as a real Windows service; more
+  robust, survives reboots more gracefully, runs invisibly.
+- Either way, disable sleep/screen-off in Windows power settings so
+  the PC never pauses itself.
+
+`atlas_trader/loop.py` also exposes `is_market_open()` (simplified
+weekday/UTC-hour check — doesn't account for holidays) and
+`run_one_cycle()` / `check_open_trades()` if you want to run things
+manually or step through a single cycle for debugging.
 
 Sentiment Engine and a live news/calendar feed are deferred to v2.
 
@@ -76,12 +102,14 @@ atlas_trader/
 │   ├── analytics/
 │   │   ├── __init__.py
 │   │   └── engine.py        # generate_report(), win rate, confidence-vs-outcome, etc.
-│   └── data_engine/
-│       ├── __init__.py
-│       ├── base.py          # DataProvider abstract interface
-│       ├── mock_provider.py # MockDataProvider — synthetic data, no network
-│       ├── oanda_provider.py # OandaDataProvider — real v20 REST API (untested, no token yet)
-│       └── pipeline.py      # run_analysis_cycle() — orchestrates every module
+│   ├── data_engine/
+│   │   ├── __init__.py
+│   │   ├── base.py          # DataProvider abstract interface
+│   │   ├── mock_provider.py # MockDataProvider — synthetic data, no network
+│   │   ├── oanda_provider.py # OandaDataProvider — real v20 REST API, verified working live
+│   │   └── pipeline.py      # run_analysis_cycle() — orchestrates every module
+│   └── loop.py               # is_market_open(), run_one_cycle(), run_forever()
+├── run_loop.py               # entry point — run this on the PC (--mock for testing)
 ├── config/
 │   ├── macro_rates.json     # manually-updated Fed/ECB rate + stance table
 │   └── oanda_credentials.example.json  # copy to oanda_credentials.json + fill in (gitignored)
@@ -96,7 +124,8 @@ atlas_trader/
 │   ├── test_risk_engine_smoke.py
 │   ├── test_ml_engine_smoke.py
 │   ├── test_analytics_engine_smoke.py
-│   └── test_data_engine_smoke.py
+│   ├── test_data_engine_smoke.py
+│   └── test_loop_smoke.py
 ├── requirements.txt
 └── .gitignore
 ```

@@ -100,3 +100,48 @@ class OandaDataProvider(DataProvider):
         response.raise_for_status()
         data = response.json()
         return float(data["account"]["balance"])
+
+    def place_order(
+        self, pair: str, direction: str, units: int, stop_loss: float, take_profit: float
+    ) -> str:
+        """Market order with attached SL/TP, filled immediately (FOK).
+
+        OANDA represents direction via the sign of `units` — negative
+        for a sell/short, positive for a buy/long.
+        """
+        signed_units = units if direction == "long" else -units
+        url = f"{self.base_url}/v3/accounts/{self.account_id}/orders"
+        payload = {
+            "order": {
+                "type": "MARKET",
+                "instrument": pair,
+                "units": str(signed_units),
+                "timeInForce": "FOK",
+                "positionFill": "DEFAULT",
+                "stopLossOnFill": {"price": f"{stop_loss:.5f}"},
+                "takeProfitOnFill": {"price": f"{take_profit:.5f}"},
+            }
+        }
+        response = requests.post(url, headers=self._headers, json=payload, timeout=15)
+        response.raise_for_status()
+        data = response.json()
+
+        fill = data.get("orderFillTransaction")
+        if fill is None:
+            raise RuntimeError(f"Order was not filled: {data}")
+        return fill["tradeOpened"]["tradeID"]
+
+    def get_trade_status(self, broker_trade_id: str) -> dict:
+        url = f"{self.base_url}/v3/accounts/{self.account_id}/trades/{broker_trade_id}"
+        response = requests.get(url, headers=self._headers, timeout=15)
+        response.raise_for_status()
+        data = response.json()
+        trade = data["trade"]
+
+        if trade["state"] == "OPEN":
+            return {"status": "open", "close_price": None, "pnl": None}
+        return {
+            "status": "closed",
+            "close_price": float(trade.get("averageClosePrice", 0.0)),
+            "pnl": float(trade.get("realizedPL", 0.0)),
+        }

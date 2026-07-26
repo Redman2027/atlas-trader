@@ -30,3 +30,24 @@ class DataProvider(ABC):
     def get_account_balance(self) -> float:
         """Return the current real account balance (before any risk cap)."""
         raise NotImplementedError
+
+    @abstractmethod
+    def place_order(
+        self, pair: str, direction: str, units: int, stop_loss: float, take_profit: float
+    ) -> str:
+        """Place a market order with attached stop-loss/take-profit.
+
+        Returns a broker trade ID (a string) that can later be passed to
+        get_trade_status() to check whether it's still open or has closed.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_trade_status(self, broker_trade_id: str) -> dict:
+        """Check a previously-placed trade.
+
+        Returns {"status": "open"} while still running, or
+        {"status": "closed", "close_price": float, "pnl": float} once
+        the stop-loss or take-profit has been hit.
+        """
+        raise NotImplementedError

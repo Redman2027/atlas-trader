@@ -33,6 +33,8 @@ class MockDataProvider(DataProvider):
         self._start_price = start_price
         self._account_balance = account_balance
         self._drift = drift  # slight directional bias so trends aren't purely random
+        self._orders: dict[str, dict] = {}
+        self._next_order_id = 1
 
     def get_candles(self, pair: str, granularity: str, count: int) -> list[dict]:
         # Seed per (pair, granularity) so different pairs/timeframes get
@@ -63,3 +65,37 @@ class MockDataProvider(DataProvider):
 
     def get_account_balance(self) -> float:
         return self._account_balance
+
+    def place_order(
+        self, pair: str, direction: str, units: int, stop_loss: float, take_profit: float
+    ) -> str:
+        order_id = f"mock-{self._next_order_id}"
+        self._next_order_id += 1
+        self._orders[order_id] = {
+            "pair": pair,
+            "direction": direction,
+            "units": units,
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+            "entry_price": self.get_current_price(pair),
+            "checks": 0,
+        }
+        return order_id
+
+    def get_trade_status(self, broker_trade_id: str) -> dict:
+        """Reports 'open' on the first check, then deterministically
+        'closed' (hitting either SL or TP, decided by a seeded coin
+        flip) on every check after that — enough to exercise the
+        loop's open -> closed transition in tests without needing real
+        time to pass."""
+        order = self._orders[broker_trade_id]
+        order["checks"] += 1
+        if order["checks"] < 2:
+            return {"status": "open", "close_price": None, "pnl": None}
+
+        rng = random.Random(f"{self._seed}-{broker_trade_id}")
+        won = rng.random() > 0.5
+        close_price = order["take_profit"] if won else order["stop_loss"]
+        distance = abs(close_price - order["entry_price"])
+        pnl = order["units"] * distance * (1 if won else -1)
+        return {"status": "closed", "close_price": close_price, "pnl": round(pnl, 2)}
