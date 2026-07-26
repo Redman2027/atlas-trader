@@ -26,7 +26,9 @@ Built module by module. Current progress:
 - [x] **ML/Adaptation Layer** — online learning (SGD logistic
       regression, updates after every closed trade) + auto loss-cause
       classification (`atlas_trader/ml/`)
-- [ ] Analytics Engine
+- [x] **Analytics Engine** — read-only reporting over the Journal: win
+      rate, confidence-vs-outcome, loss-cause breakdown, P/L summary
+      (`atlas_trader/analytics/`)
 - [ ] Data Engine (OANDA v20 API integration)
 
 Sentiment Engine and a live news/calendar feed are deferred to v2.
@@ -57,16 +59,28 @@ atlas_trader/
 │   ├── voting/
 │   │   ├── __init__.py
 │   │   └── engine.py        # combine_biases(), score_setup()
-│   └── risk/
+│   ├── risk/
+│   │   ├── __init__.py
+│   │   └── engine.py        # compute_position_size(), compute_trade_plan()
+│   ├── ml/
+│   │   ├── __init__.py
+│   │   └── engine.py        # OnlineTradeModel, classify_loss_cause()
+│   └── analytics/
 │       ├── __init__.py
-│       └── engine.py        # compute_position_size(), compute_trade_plan()
+│       └── engine.py        # generate_report(), win rate, confidence-vs-outcome, etc.
 ├── config/
 │   └── macro_rates.json     # manually-updated Fed/ECB rate + stance table
 ├── data/                    # atlas_trader.db lives here (gitignored)
 ├── docs/
 │   └── AtlasTrader_Blueprint_v1_1.md
 ├── tests/
-│   └── test_journal_smoke.py
+│   ├── test_journal_smoke.py
+│   ├── test_currency_strength_smoke.py
+│   ├── test_technical_engine_smoke.py
+│   ├── test_voting_engine_smoke.py
+│   ├── test_risk_engine_smoke.py
+│   ├── test_ml_engine_smoke.py
+│   └── test_analytics_engine_smoke.py
 ├── requirements.txt
 └── .gitignore
 ```
@@ -240,6 +254,32 @@ plan = compute_trade_plan(
 Assumes the account currency matches the traded pair's quote currency
 (true for a USD account trading EUR_USD) — see the docstring in
 `risk/engine.py` if that ever changes.
+
+## Analytics Engine
+
+Read-only reporting over the Journal — one function call gets you a
+full snapshot:
+
+```python
+from atlas_trader.journal import get_connection
+from atlas_trader.analytics import generate_report
+
+conn = get_connection()
+report = generate_report(conn)
+# {
+#   "total_setups_logged": ..., "total_trades_opened": ..., "open_trades": ...,
+#   "win_rate": {"total_closed": .., "wins": .., "losses": .., "win_rate": 0.6},
+#   "confidence_vs_outcome": {"avg_confidence_wins": 75.0, "avg_confidence_losses": 43.5, ...},
+#   "loss_cause_breakdown": {"technical_misread": 1, "macro_misread": 1},
+#   "pnl_summary": {"total_pnl": .., "avg_pnl": .., "best_trade": .., "worst_trade": ..},
+# }
+```
+
+`confidence_vs_outcome` is the most important number here — if the
+Voting Engine's confidence score is actually meaningful, winning
+trades should consistently average a higher confidence score than
+losing trades. If that ever inverts once real trades are flowing,
+that's the signal something upstream needs attention.
 
 ## Uploading to GitHub
 
