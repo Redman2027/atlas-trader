@@ -20,7 +20,9 @@ Built module by module. Current progress:
 - [x] **Voting/Confidence Engine** — weighted combination of Macro,
       Currency Strength, and Technical biases into one 0-100 confidence
       score + direction (`atlas_trader/voting/`)
-- [ ] Risk Engine (ATR-based sizing, capped effective balance)
+- [x] **Risk Engine** — ATR-based dynamic position sizing against a
+      capped effective balance, with a leverage safety clamp
+      (`atlas_trader/risk/`)
 - [ ] ML/Adaptation Layer (online learning, auto loss-cause classification)
 - [ ] Analytics Engine
 - [ ] Data Engine (OANDA v20 API integration)
@@ -50,9 +52,12 @@ atlas_trader/
 │   │   ├── indicators.py    # EMA, RSI, MACD, ATR (pure stdlib)
 │   │   ├── patterns.py      # candlestick pattern detection
 │   │   └── engine.py        # analyze_candles(), compute_technical_bias()
-│   └── voting/
+│   ├── voting/
+│   │   ├── __init__.py
+│   │   └── engine.py        # combine_biases(), score_setup()
+│   └── risk/
 │       ├── __init__.py
-│       └── engine.py        # combine_biases(), score_setup()
+│       └── engine.py        # compute_position_size(), compute_trade_plan()
 ├── config/
 │   └── macro_rates.json     # manually-updated Fed/ECB rate + stance table
 ├── data/                    # atlas_trader.db lives here (gitignored)
@@ -202,6 +207,37 @@ setups at or above this get journaled, traded or not) and
 executed). When modules agree, their biases reinforce each other into
 a high score; when they disagree, they cancel out into a low one —
 that's the actual "voting."
+
+## Risk Engine
+
+ATR-based dynamic position sizing against the capped effective balance
+(`min(real_balance, balance_cap)`). Defaults: 1% risk per trade,
+stop-loss = 1.5x ATR, take-profit = 1.5x the stop distance (1.5:1
+reward:risk), and a 20:1 max-leverage safety clamp so an unusually
+tight ATR reading can never demand an oversized position. All defaults
+live at the top of `atlas_trader/risk/engine.py` and are easy to retune.
+
+```python
+from atlas_trader.risk import compute_trade_plan
+
+plan = compute_trade_plan(
+    direction="long",       # from the Voting Engine's output
+    entry_price=1.0850,
+    atr=0.0007,              # from the Technical Engine
+    account_balance=100_000, # real account balance
+    balance_cap=2_000,       # effective balance is capped here
+)
+# {
+#   "direction": "long", "entry_price": 1.085,
+#   "stop_loss": 1.08395, "take_profit": 1.08658,
+#   "position_size_units": 19047,
+#   "sizing_detail": {...}   # full breakdown for the Journal's feature_snapshot
+# }
+```
+
+Assumes the account currency matches the traded pair's quote currency
+(true for a USD account trading EUR_USD) — see the docstring in
+`risk/engine.py` if that ever changes.
 
 ## Uploading to GitHub
 
