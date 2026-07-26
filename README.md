@@ -12,7 +12,9 @@ Built module by module. Current progress:
       (traded or not) and every executed trade's outcome
 - [x] **Macro Engine (stub)** — manually-maintained interest rate
       differential config (`config/macro_rates.json`)
-- [ ] Currency Strength Matrix
+- [x] **Currency Strength Matrix** — independent 0-100 strength score
+      per tracked currency, computed from signed % change across a
+      13-pair major currency basket (`atlas_trader/currency_strength/`)
 - [ ] Technical Engine (EMA, RSI, MACD, ATR, candlestick patterns)
 - [ ] Voting/Confidence Engine
 - [ ] Risk Engine (ATR-based sizing, capped effective balance)
@@ -28,11 +30,15 @@ Sentiment Engine and a live news/calendar feed are deferred to v2.
 atlas_trader/
 ├── atlas_trader/
 │   ├── __init__.py
-│   └── journal/
+│   ├── journal/
+│   │   ├── __init__.py
+│   │   ├── db.py            # SQLite connection + schema
+│   │   ├── models.py        # Setup / Trade dataclasses
+│   │   └── repository.py    # log_setup, open_trade, close_trade, etc.
+│   └── currency_strength/
 │       ├── __init__.py
-│       ├── db.py            # SQLite connection + schema
-│       ├── models.py        # Setup / Trade dataclasses
-│       └── repository.py    # log_setup, open_trade, close_trade, etc.
+│       ├── pairs.py         # FX pair conventions, currency universe
+│       └── calculator.py    # compute_currency_strength(), scoring math
 ├── config/
 │   └── macro_rates.json     # manually-updated Fed/ECB rate + stance table
 ├── data/                    # atlas_trader.db lives here (gitignored)
@@ -87,6 +93,30 @@ Central bank meetings are infrequent (~8x/year) so this doesn't need a
 live feed to stay accurate; it just needs you to update it after each
 meeting. It's wired to plug into the Voting/Confidence Engine as a
 directional bias input.
+
+## Currency Strength Matrix
+
+Computes an independent 0-100 strength score per tracked currency
+(currently EUR and USD), centered at 50 (neutral). For each tracked
+currency, it averages the signed % price change across all 7 pairs
+that currency forms against the other major currencies (EUR, GBP,
+AUD, NZD, USD, CAD, CHF, JPY) — 13 unique pairs total for EUR+USD.
+
+This module is data-source agnostic: it takes a plain
+`{pair_symbol: pct_change}` dict and returns scores. It doesn't fetch
+prices itself — that's the Data Engine's job once built. Both `raw`
+(the actual average % move) and `score` (the scaled 0-100 value) are
+returned together, so the Journal's feature_snapshot always shows the
+real number behind the score, not just the final figure.
+
+```python
+from atlas_trader.currency_strength import get_required_pairs, compute_currency_strength
+
+pairs_needed = get_required_pairs()  # 13 pairs for EUR + USD
+# pair_changes = {...}  # fill in from the Data Engine
+result = compute_currency_strength(pair_changes)
+# {"EUR": {"raw": 0.25, "score": 62.5}, "USD": {"raw": -0.04, "score": 47.93}}
+```
 
 ## Uploading to GitHub
 
