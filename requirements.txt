@@ -1,9 +1,13 @@
-# Journal Engine (current) — stdlib only, no dependencies yet (sqlite3, json,
-# dataclasses are all built into Python 3.10+).
+# Data Engine — real HTTP calls to OANDA's REST API
+requests
 
-# --- Coming in later modules, listed here so the file is ready ---
-# oandapyV20        # OANDA v20 REST API client (Data Engine, execution)
-# pandas            # candle data handling
-# numpy             # numeric ops
-# ta                # EMA / RSI / MACD / ATR indicators (Technical Engine)
-# river             # incremental/online ML (ML/Adaptation Layer)
+# Journal Engine, Currency Strength, Technical, Voting, Risk, ML, Analytics —
+# all stdlib only (sqlite3, json, dataclasses, math). No dependencies needed.
+
+# --- Not currently used; most indicator/ML math ended up hand-implemented
+# in pure stdlib instead, but listed here in case you want to swap to
+# these later ---
+# oandapyV20      # alternative OANDA client wrapper (requests is used directly instead)
+# pandas          # only needed if candle handling grows beyond plain dicts
+# ta              # alternative to the hand-rolled indicators.py
+# river           # alternative to the hand-rolled OnlineTradeModel

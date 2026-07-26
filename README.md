@@ -29,7 +29,15 @@ Built module by module. Current progress:
 - [x] **Analytics Engine** — read-only reporting over the Journal: win
       rate, confidence-vs-outcome, loss-cause breakdown, P/L summary
       (`atlas_trader/analytics/`)
-- [ ] Data Engine (OANDA v20 API integration)
+- [x] **Data Engine** — `DataProvider` interface with a working
+      `MockDataProvider` (synthetic, no network) and an `OandaDataProvider`
+      (written against OANDA's v20 REST API, untested until a token
+      exists). `run_analysis_cycle()` orchestrates every module end to
+      end (`atlas_trader/data_engine/`)
+
+**All 9 modules now exist and are wired together** — proven end-to-end
+via `MockDataProvider`. The only thing left before this runs on real
+market data is an OANDA API token.
 
 Sentiment Engine and a live news/calendar feed are deferred to v2.
 
@@ -65,11 +73,18 @@ atlas_trader/
 │   ├── ml/
 │   │   ├── __init__.py
 │   │   └── engine.py        # OnlineTradeModel, classify_loss_cause()
-│   └── analytics/
+│   ├── analytics/
+│   │   ├── __init__.py
+│   │   └── engine.py        # generate_report(), win rate, confidence-vs-outcome, etc.
+│   └── data_engine/
 │       ├── __init__.py
-│       └── engine.py        # generate_report(), win rate, confidence-vs-outcome, etc.
+│       ├── base.py          # DataProvider abstract interface
+│       ├── mock_provider.py # MockDataProvider — synthetic data, no network
+│       ├── oanda_provider.py # OandaDataProvider — real v20 REST API (untested, no token yet)
+│       └── pipeline.py      # run_analysis_cycle() — orchestrates every module
 ├── config/
-│   └── macro_rates.json     # manually-updated Fed/ECB rate + stance table
+│   ├── macro_rates.json     # manually-updated Fed/ECB rate + stance table
+│   └── oanda_credentials.example.json  # copy to oanda_credentials.json + fill in (gitignored)
 ├── data/                    # atlas_trader.db lives here (gitignored)
 ├── docs/
 │   └── AtlasTrader_Blueprint_v1_1.md
@@ -80,7 +95,8 @@ atlas_trader/
 │   ├── test_voting_engine_smoke.py
 │   ├── test_risk_engine_smoke.py
 │   ├── test_ml_engine_smoke.py
-│   └── test_analytics_engine_smoke.py
+│   ├── test_analytics_engine_smoke.py
+│   └── test_data_engine_smoke.py
 ├── requirements.txt
 └── .gitignore
 ```
@@ -280,6 +296,47 @@ Voting Engine's confidence score is actually meaningful, winning
 trades should consistently average a higher confidence score than
 losing trades. If that ever inverts once real trades are flowing,
 that's the signal something upstream needs attention.
+
+## Data Engine
+
+`DataProvider` is the abstract interface every price source implements:
+`get_candles()`, `get_current_price()`, `get_account_balance()`. No
+other module ever talks to OANDA (or anything else) directly — this is
+what makes swapping mock data for real data a zero-rework change.
+
+**`MockDataProvider`** — synthetic, deterministic (same seed = same
+data every time), no network. This is what proves the whole pipeline
+end to end right now:
+
+```python
+from atlas_trader.data_engine import MockDataProvider, run_analysis_cycle
+
+provider = MockDataProvider(seed=1)
+result = run_analysis_cycle(provider)
+# result["voting"] -> direction, confidence_score, should_trade, components (full breakdown)
+# result["trade_plan"] -> None, or a full Risk Engine plan if should_trade is True
+```
+
+**`OandaDataProvider`** — real OANDA v20 REST API implementation.
+Written against OANDA's documented API structure but **untested until
+a real token exists** (no credentials were available while building
+this). To connect it once you have a token:
+
+1. `pip install requests` (if not already installed)
+2. Copy `config/oanda_credentials.example.json` to
+   `config/oanda_credentials.json` and fill in your real `api_token`
+   and `account_id` (this file is gitignored — it will never be
+   committed)
+3. Swap the provider in your code:
+   ```python
+   from atlas_trader.data_engine import OandaDataProvider, run_analysis_cycle
+   provider = OandaDataProvider.from_config()
+   result = run_analysis_cycle(provider)
+   ```
+
+`get_candles()` works whether the market is open or closed — OANDA
+always returns the last completed candles either way, which is exactly
+what's needed for testing outside market hours.
 
 ## Uploading to GitHub
 
