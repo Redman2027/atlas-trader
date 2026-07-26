@@ -7,7 +7,7 @@ from .patterns import (
     is_shooting_star,
     detect_pattern,
 )
-from .engine import analyze_candles
+from .engine import analyze_candles, compute_technical_bias
 
 __all__ = [
     "ema_series",
@@ -21,4 +21,5 @@ __all__ = [
     "is_shooting_star",
     "detect_pattern",
     "analyze_candles",
+    "compute_technical_bias",
 ]

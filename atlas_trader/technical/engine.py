@@ -100,3 +100,52 @@ def analyze_candles(
         },
         "pattern": detect_pattern(candles),
     }
+
+
+# --- Directional bias, for the Voting/Confidence Engine ---
+
+EMA_TREND_WEIGHT = 30.0
+MACD_CROSS_WEIGHT = 30.0
+RSI_WEIGHT = 20.0
+PATTERN_WEIGHT = 20.0
+
+BULLISH_PATTERNS = {"bullish_engulfing", "hammer"}
+BEARISH_PATTERNS = {"bearish_engulfing", "shooting_star"}
+
+
+def compute_technical_bias(result: dict) -> dict:
+    """Convert an analyze_candles() result into a -100..100 directional bias.
+
+    Each component contributes a score in [-1, 1] multiplied by its
+    weight; the four weights sum to 100, so the total lands directly
+    on the same -100..100 scale used by every other module (Macro,
+    Currency Strength).
+    """
+    ema_component = {"up": 1, "down": -1}.get(result["ema"]["trend"], 0)
+    macd_component = {"bullish_cross": 1, "bearish_cross": -1}.get(result["macd"]["cross"], 0)
+
+    rsi_value = result["rsi"]["value"]
+    rsi_component = 0.0 if rsi_value is None else max(-1.0, min(1.0, (rsi_value - 50) / 50))
+
+    pattern = result["pattern"]
+    if pattern in BULLISH_PATTERNS:
+        pattern_component = 1
+    elif pattern in BEARISH_PATTERNS:
+        pattern_component = -1
+    else:
+        pattern_component = 0
+
+    bias = (
+        ema_component * EMA_TREND_WEIGHT
+        + macd_component * MACD_CROSS_WEIGHT
+        + rsi_component * RSI_WEIGHT
+        + pattern_component * PATTERN_WEIGHT
+    )
+
+    return {
+        "ema_component": ema_component,
+        "macd_component": macd_component,
+        "rsi_component": round(rsi_component, 3),
+        "pattern_component": pattern_component,
+        "bias": round(bias, 2),
+    }

@@ -17,7 +17,9 @@ Built module by module. Current progress:
       13-pair major currency basket (`atlas_trader/currency_strength/`)
 - [x] **Technical Engine** — EMA, RSI, MACD, ATR, and candlestick
       pattern detection, all pure stdlib (`atlas_trader/technical/`)
-- [ ] Voting/Confidence Engine
+- [x] **Voting/Confidence Engine** — weighted combination of Macro,
+      Currency Strength, and Technical biases into one 0-100 confidence
+      score + direction (`atlas_trader/voting/`)
 - [ ] Risk Engine (ATR-based sizing, capped effective balance)
 - [ ] ML/Adaptation Layer (online learning, auto loss-cause classification)
 - [ ] Analytics Engine
@@ -36,15 +38,21 @@ atlas_trader/
 │   │   ├── db.py            # SQLite connection + schema
 │   │   ├── models.py        # Setup / Trade dataclasses
 │   │   └── repository.py    # log_setup, open_trade, close_trade, etc.
+│   ├── macro/
+│   │   ├── __init__.py
+│   │   └── engine.py        # compute_macro_bias() from the rate config
 │   ├── currency_strength/
 │   │   ├── __init__.py
 │   │   ├── pairs.py         # FX pair conventions, currency universe
 │   │   └── calculator.py    # compute_currency_strength(), scoring math
-│   └── technical/
+│   ├── technical/
+│   │   ├── __init__.py
+│   │   ├── indicators.py    # EMA, RSI, MACD, ATR (pure stdlib)
+│   │   ├── patterns.py      # candlestick pattern detection
+│   │   └── engine.py        # analyze_candles(), compute_technical_bias()
+│   └── voting/
 │       ├── __init__.py
-│       ├── indicators.py    # EMA, RSI, MACD, ATR (pure stdlib)
-│       ├── patterns.py      # candlestick pattern detection
-│       └── engine.py        # analyze_candles(), combines everything
+│       └── engine.py        # combine_biases(), score_setup()
 ├── config/
 │   └── macro_rates.json     # manually-updated Fed/ECB rate + stance table
 ├── data/                    # atlas_trader.db lives here (gitignored)
@@ -150,6 +158,50 @@ bearish engulfing, doji, hammer, and shooting star — each is a plain,
 readable geometric check on candle bodies/wicks, not a black-box
 classifier, so a flagged pattern can always be traced back to the
 exact numbers that triggered it.
+
+## Macro Engine
+
+`atlas_trader/macro/engine.py` reads `config/macro_rates.json` and
+converts the stance (hawkish/neutral/dovish) difference + rate
+differential between two currencies into a -100..100 bias:
+
+```python
+from atlas_trader.macro import compute_macro_bias
+
+result = compute_macro_bias("EUR", "USD")
+# {"base_stance": "hawkish", "quote_stance": "hawkish", "stance_diff": 0,
+#  "rate_diff": -1.5, "bias": -15.0}
+```
+
+## Voting/Confidence Engine
+
+Combines Macro, Currency Strength, and Technical biases — all on the
+same -100..100 scale — into one weighted composite score. The
+magnitude becomes the confidence score (0-100); the sign becomes the
+direction. Default weights: macro 25%, currency strength 25%,
+technical 50% (technical weighted highest since it's the actual entry
+trigger on the 5M chart; easy to retune in `DEFAULT_WEIGHTS`).
+
+```python
+from atlas_trader.voting import score_setup
+
+result = score_setup(macro_result, currency_strength_result, technical_bias_result)
+# {
+#   "direction": "long",
+#   "confidence_score": 66.23,
+#   "composite_bias": 66.23,
+#   "should_log": True,
+#   "should_trade": True,
+#   "components": {...}   # full breakdown -> feeds straight into feature_snapshot
+# }
+```
+
+Two thresholds control behavior: `MIN_LOG_THRESHOLD` (40 by default —
+setups at or above this get journaled, traded or not) and
+`TRADE_THRESHOLD` (65 by default — setups at or above this get
+executed). When modules agree, their biases reinforce each other into
+a high score; when they disagree, they cancel out into a low one —
+that's the actual "voting."
 
 ## Uploading to GitHub
 
