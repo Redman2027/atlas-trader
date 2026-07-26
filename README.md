@@ -15,7 +15,8 @@ Built module by module. Current progress:
 - [x] **Currency Strength Matrix** — independent 0-100 strength score
       per tracked currency, computed from signed % change across a
       13-pair major currency basket (`atlas_trader/currency_strength/`)
-- [ ] Technical Engine (EMA, RSI, MACD, ATR, candlestick patterns)
+- [x] **Technical Engine** — EMA, RSI, MACD, ATR, and candlestick
+      pattern detection, all pure stdlib (`atlas_trader/technical/`)
 - [ ] Voting/Confidence Engine
 - [ ] Risk Engine (ATR-based sizing, capped effective balance)
 - [ ] ML/Adaptation Layer (online learning, auto loss-cause classification)
@@ -35,10 +36,15 @@ atlas_trader/
 │   │   ├── db.py            # SQLite connection + schema
 │   │   ├── models.py        # Setup / Trade dataclasses
 │   │   └── repository.py    # log_setup, open_trade, close_trade, etc.
-│   └── currency_strength/
+│   ├── currency_strength/
+│   │   ├── __init__.py
+│   │   ├── pairs.py         # FX pair conventions, currency universe
+│   │   └── calculator.py    # compute_currency_strength(), scoring math
+│   └── technical/
 │       ├── __init__.py
-│       ├── pairs.py         # FX pair conventions, currency universe
-│       └── calculator.py    # compute_currency_strength(), scoring math
+│       ├── indicators.py    # EMA, RSI, MACD, ATR (pure stdlib)
+│       ├── patterns.py      # candlestick pattern detection
+│       └── engine.py        # analyze_candles(), combines everything
 ├── config/
 │   └── macro_rates.json     # manually-updated Fed/ECB rate + stance table
 ├── data/                    # atlas_trader.db lives here (gitignored)
@@ -117,6 +123,33 @@ pairs_needed = get_required_pairs()  # 13 pairs for EUR + USD
 result = compute_currency_strength(pair_changes)
 # {"EUR": {"raw": 0.25, "score": 62.5}, "USD": {"raw": -0.04, "score": 47.93}}
 ```
+
+## Technical Engine
+
+Pure stdlib (no pandas/numpy/ta dependency yet) — takes a list of
+candle dicts (oldest first: `{"open", "high", "low", "close"}`) and
+returns EMA, RSI, MACD, ATR, and the detected candlestick pattern in
+one call:
+
+```python
+from atlas_trader.technical import analyze_candles
+
+# candles = [...]  # fill in from the Data Engine
+result = analyze_candles(candles)
+# {
+#   "ema": {"period": 20, "value": 1.0927, "trend": "up"},
+#   "rsi": {"period": 14, "value": 68.0},
+#   "macd": {"macd_line": .., "signal_line": .., "histogram": .., "cross": "none"},
+#   "atr": {"period": 14, "value": 0.0011},
+#   "pattern": "none",
+# }
+```
+
+Candlestick pattern detection (`patterns.py`) currently covers bullish/
+bearish engulfing, doji, hammer, and shooting star — each is a plain,
+readable geometric check on candle bodies/wicks, not a black-box
+classifier, so a flagged pattern can always be traced back to the
+exact numbers that triggered it.
 
 ## Uploading to GitHub
 
