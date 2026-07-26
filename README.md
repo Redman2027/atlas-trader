@@ -23,7 +23,9 @@ Built module by module. Current progress:
 - [x] **Risk Engine** — ATR-based dynamic position sizing against a
       capped effective balance, with a leverage safety clamp
       (`atlas_trader/risk/`)
-- [ ] ML/Adaptation Layer (online learning, auto loss-cause classification)
+- [x] **ML/Adaptation Layer** — online learning (SGD logistic
+      regression, updates after every closed trade) + auto loss-cause
+      classification (`atlas_trader/ml/`)
 - [ ] Analytics Engine
 - [ ] Data Engine (OANDA v20 API integration)
 
