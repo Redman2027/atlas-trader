@@ -114,10 +114,14 @@ def run_analysis_cycle(
     }
 
     # 5. Risk Engine — only runs if the setup clears the trade threshold
-    if voting_result["should_trade"]:
+    # AND the ATR is actually available (it's None during the first ~15
+    # candles of any run/backtest, before there's enough data to compute
+    # it — trying to size a position off no volatility reading isn't
+    # safe, so skip trading rather than crash or guess).
+    atr = technical_result["atr"]["value"]
+    if voting_result["should_trade"] and atr is not None:
         entry_price = provider.get_current_price(entry_pair)
         account_balance = provider.get_account_balance()
-        atr = technical_result["atr"]["value"]
         result["trade_plan"] = compute_trade_plan(
             direction=voting_result["direction"],
             entry_price=entry_price,

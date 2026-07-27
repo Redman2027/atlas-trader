@@ -378,6 +378,45 @@ this). To connect it once you have a token:
 always returns the last completed candles either way, which is exactly
 what's needed for testing outside market hours.
 
+- [x] **Backtest Engine** — replays real historical OANDA data through
+      the exact same pipeline and loop used for live trading, no other
+      module changes needed (`atlas_trader/backtest/`)
+
+## Backtest Engine
+
+Runs the entire system — Technical, Currency Strength, Macro, Voting,
+Risk, Journal, ML — against real historical OANDA data instead of live
+data, using the same `run_one_cycle()` the live loop uses. This works
+with zero changes to any other module because everything was built
+against the `DataProvider` abstraction from the start.
+
+```bash
+python backtest.py
+```
+
+First run downloads and caches several months of 5M/4H/1D candles for
+every pair the Currency Strength Matrix needs (paginated — OANDA caps
+requests at 5000 candles each, so this can take a while the first
+time). Later runs reuse the cache in `data/historical/` instantly.
+
+Uses a **separate** database and ML model file
+(`data/backtest_atlas_trader.db`, `data/backtest_ml_model.json`) so a
+backtest never touches your real Journal or the model your live
+trading learns from.
+
+**How trades resolve**: `HistoricalDataProvider` simulates time
+advancing candle-by-candle, and checks each simulated trade's
+stop-loss/take-profit against the *actual subsequent historical
+candles* — not a random outcome. If a single candle's range crosses
+both levels (a gappy candle), it conservatively assumes the stop-loss
+hit first, since real intra-candle order isn't knowable from OHLC data
+alone.
+
+At the end, it prints a full report using the same Analytics Engine
+used for live trading: win rate, confidence-vs-outcome, loss-cause
+breakdown, P/L summary — so backtest results and live results are
+always directly comparable.
+
 ## Uploading to GitHub
 
 ```bash
