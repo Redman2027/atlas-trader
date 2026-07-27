@@ -241,23 +241,27 @@ result = compute_macro_bias("EUR", "USD")
 
 ## Voting/Confidence Engine
 
-Combines Macro, Currency Strength, and Technical biases — all on the
-same -100..100 scale — into one weighted composite score. The
-magnitude becomes the confidence score (0-100); the sign becomes the
-direction. Default weights: macro 25%, currency strength 25%,
-technical 50% (technical weighted highest since it's the actual entry
-trigger on the 5M chart; easy to retune in `DEFAULT_WEIGHTS`).
+Combines Macro, Currency Strength, Technical (5M entry timeframe), and
+**higher-timeframe Trend Context (4H + 1D)** — all on the same
+-100..100 scale — into one weighted composite score. The magnitude
+becomes the confidence score (0-100); the sign becomes the direction.
+
+Default weights when trend data is supplied (the real pipeline always
+supplies it): macro 20%, currency strength 15%, technical 35%, 4H trend
+15%, 1D trend 15%. (A 3-component fallback — macro 25/currency
+strength 25/technical 50 — still exists for backward compatibility if
+trend data is omitted.)
 
 ```python
 from atlas_trader.voting import score_setup
 
-result = score_setup(macro_result, currency_strength_result, technical_bias_result)
+result = score_setup(
+    macro_result, currency_strength_result, technical_bias_result,
+    trend_4h_result=trend_4h_result, trend_1d_result=trend_1d_result,
+)
 # {
-#   "direction": "long",
-#   "confidence_score": 66.23,
-#   "composite_bias": 66.23,
-#   "should_log": True,
-#   "should_trade": True,
+#   "direction": "long", "confidence_score": 66.23, "composite_bias": 66.23,
+#   "should_log": True, "should_trade": True, "trend_veto": False,
 #   "components": {...}   # full breakdown -> feeds straight into feature_snapshot
 # }
 ```
@@ -268,6 +272,13 @@ setups at or above this get journaled, traded or not) and
 executed). When modules agree, their biases reinforce each other into
 a high score; when they disagree, they cancel out into a low one —
 that's the actual "voting."
+
+**Trend veto**: if both the 4H and 1D trend both strongly disagree
+(≥40 bias each, opposite sign) with the overall direction, `should_trade`
+is forced to `False` regardless of confidence — even a strong 5M bounce
+can't force a trade against an obvious daily downtrend. This was added
+after noticing the original 5M-only Technical Engine had no way to see
+the bigger picture at all.
 
 ## Risk Engine
 

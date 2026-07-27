@@ -22,6 +22,14 @@ ENTRY_GRANULARITY = "M5"
 ENTRY_CANDLE_COUNT = 60
 STRENGTH_LOOKBACK_CANDLES = 20
 
+# Higher-timeframe trend context — reuses the same Technical Engine math
+# on 4H and 1D candles, so a strong 5M bounce can't force a trade against
+# an obvious daily/4H trend. 50 candles gives MACD's signal line (needs
+# 26+9=35 minimum) comfortable room to warm up.
+TREND_4H_GRANULARITY = "H4"
+TREND_1D_GRANULARITY = "D"
+TREND_CANDLE_COUNT = 50
+
 
 def _pct_change(candles: list[dict]) -> float:
     """% change from the first to the last candle's close, in percentage points."""
@@ -46,10 +54,21 @@ def run_analysis_cycle(
     (None unless the setup cleared the trade threshold) — everything
     needed to log a Setup (and a Trade, if one was taken) to the Journal.
     """
-    # 1. Technical Engine — 5M candles for the traded pair
+    # 1. Technical Engine — 5M candles for the traded pair (entry trigger)
     entry_candles = provider.get_candles(entry_pair, ENTRY_GRANULARITY, ENTRY_CANDLE_COUNT)
     technical_result = analyze_candles(entry_candles)
     technical_bias_result = compute_technical_bias(technical_result)
+
+    # 1b. Higher-timeframe trend context — 4H and 1D, using the same
+    # Technical Engine math so results stay directly comparable to the
+    # 5M entry-timeframe bias.
+    candles_4h = provider.get_candles(entry_pair, TREND_4H_GRANULARITY, TREND_CANDLE_COUNT)
+    trend_4h_technical = analyze_candles(candles_4h)
+    trend_4h_result = compute_technical_bias(trend_4h_technical)
+
+    candles_1d = provider.get_candles(entry_pair, TREND_1D_GRANULARITY, TREND_CANDLE_COUNT)
+    trend_1d_technical = analyze_candles(candles_1d)
+    trend_1d_result = compute_technical_bias(trend_1d_technical)
 
     # 2. Currency Strength Matrix — needs the full pair basket
     required_pairs = get_required_pairs([tracked_base, tracked_quote])
@@ -77,6 +96,8 @@ def run_analysis_cycle(
         technical_bias_result,
         tracked_base=tracked_base,
         tracked_quote=tracked_quote,
+        trend_4h_result=trend_4h_result,
+        trend_1d_result=trend_1d_result,
         **voting_kwargs,
     )
 
@@ -84,6 +105,8 @@ def run_analysis_cycle(
         "pair": entry_pair,
         "timeframe": ENTRY_GRANULARITY,
         "technical": technical_result,
+        "trend_4h": trend_4h_technical,
+        "trend_1d": trend_1d_technical,
         "currency_strength": currency_strength_result,
         "macro": macro_result,
         "voting": voting_result,

@@ -116,7 +116,93 @@ def test_modules_disagree():
     assert result["should_trade"] is False
 
 
+def test_trend_veto_blocks_trade_against_daily_downtrend():
+    """The exact scenario that motivated this feature: a strong 5M bounce
+    says 'long', but both the 4H and 1D charts are clearly in a downtrend.
+    The veto should block the trade even though confidence alone would
+    otherwise clear the trade threshold."""
+    macro_result = compute_macro_bias(
+        "EUR",
+        "USD",
+        config={
+            "EUR": {"current_rate": 2.00, "stance": "neutral"},
+            "USD": {"current_rate": 2.00, "stance": "neutral"},
+        },
+    )
+
+    # Neutral currency strength so it doesn't influence the outcome
+    currency_strength_result = compute_currency_strength(
+        {pair: 0.0 for pair in [
+            "EUR_USD", "EUR_GBP", "EUR_AUD", "EUR_NZD", "EUR_CAD", "EUR_CHF", "EUR_JPY",
+            "GBP_USD", "AUD_USD", "NZD_USD", "USD_CAD", "USD_CHF", "USD_JPY",
+        ]}
+    )
+
+    # Strong bullish 5M bounce
+    technical_bias_result = compute_technical_bias(
+        {
+            "ema": {"trend": "up"},
+            "macd": {"cross": "bullish_cross"},
+            "rsi": {"value": 75.0},
+            "pattern": "bullish_engulfing",
+        }
+    )
+
+    # Both higher timeframes clearly bearish
+    trend_4h_result = compute_technical_bias(
+        {
+            "ema": {"trend": "down"},
+            "macd": {"cross": "bearish_cross"},
+            "rsi": {"value": 25.0},
+            "pattern": "bearish_engulfing",
+        }
+    )
+    trend_1d_result = compute_technical_bias(
+        {
+            "ema": {"trend": "down"},
+            "macd": {"cross": "bearish_cross"},
+            "rsi": {"value": 20.0},
+            "pattern": "bearish_engulfing",
+        }
+    )
+
+    result = score_setup(
+        macro_result,
+        currency_strength_result,
+        technical_bias_result,
+        trend_4h_result=trend_4h_result,
+        trend_1d_result=trend_1d_result,
+    )
+    print("Trend veto scenario:", result["direction"], result["confidence_score"], "veto:", result["trend_veto"])
+
+    assert result["direction"] == "long"  # the 5M/technical-heavy composite still leans long...
+    assert result["trend_veto"] is True  # ...but the daily/4H downtrend vetoes it
+    assert result["should_trade"] is False  # so no trade happens, regardless of confidence
+
+
+def test_no_veto_when_trend_data_absent():
+    """Backward compatibility: omitting trend_4h/trend_1d entirely must
+    behave exactly like before this feature existed — no veto possible."""
+    macro_result = compute_macro_bias(
+        "EUR", "USD",
+        config={"EUR": {"current_rate": 3.50, "stance": "hawkish"}, "USD": {"current_rate": 1.00, "stance": "dovish"}},
+    )
+    currency_strength_result = compute_currency_strength({pair: 0.5 for pair in [
+        "EUR_USD", "EUR_GBP", "EUR_AUD", "EUR_NZD", "EUR_CAD", "EUR_CHF", "EUR_JPY",
+        "GBP_USD", "AUD_USD", "NZD_USD", "USD_CAD", "USD_CHF", "USD_JPY",
+    ]})
+    technical_bias_result = compute_technical_bias(
+        {"ema": {"trend": "up"}, "macd": {"cross": "bullish_cross"}, "rsi": {"value": 70.0}, "pattern": "bullish_engulfing"}
+    )
+
+    result = score_setup(macro_result, currency_strength_result, technical_bias_result)
+    assert result["trend_veto"] is False
+    assert "trend_4h" not in result["components"]
+
+
 if __name__ == "__main__":
     test_all_modules_agree_bullish()
     test_modules_disagree()
+    test_trend_veto_blocks_trade_against_daily_downtrend()
+    test_no_veto_when_trend_data_absent()
     print("Voting/Confidence Engine smoke test passed.")

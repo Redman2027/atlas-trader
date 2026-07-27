@@ -142,6 +142,8 @@ def run_one_cycle(
         confidence_score=voting["confidence_score"],
         feature_snapshot={
             "technical": result["technical"],
+            "trend_4h": result["trend_4h"],
+            "trend_1d": result["trend_1d"],
             "currency_strength": result["currency_strength"],
             "macro": result["macro"],
             "voting": voting,
