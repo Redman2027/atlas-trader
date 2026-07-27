@@ -57,8 +57,22 @@ def test_different_seeds_can_differ():
     print("Seed 999 confidence:", result_b["voting"]["confidence_score"])
 
 
+def test_non_default_pair_scores_correct_currencies():
+    """Regression test: run_analysis_cycle with a non-default pair (EUR/CAD)
+    must score EUR/CAD in the Currency Strength Matrix, not silently fall
+    back to the EUR/USD default. This was a real bug once."""
+    provider = MockDataProvider(seed=1)
+    result = run_analysis_cycle(
+        provider, tracked_base="EUR", tracked_quote="CAD", entry_pair="EUR_CAD"
+    )
+    assert set(result["currency_strength"].keys()) == {"EUR", "CAD"}
+    assert result["macro"]["base_currency"] == "EUR"
+    assert result["macro"]["quote_currency"] == "CAD"
+
+
 if __name__ == "__main__":
     test_pipeline_runs_end_to_end()
     test_reproducible_with_same_seed()
     test_different_seeds_can_differ()
+    test_non_default_pair_scores_correct_currencies()
     print("Data Engine smoke test passed.")

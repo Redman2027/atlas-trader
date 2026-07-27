@@ -17,5 +17,14 @@
     "stance_note": "Actively tightening due to energy-driven inflation shock; 2026 headline inflation projected at 3%",
     "last_updated": "2026-07-21",
     "next_meeting": "2026-07-23"
+  },
+  "CAD": {
+    "central_bank": "Bank of Canada",
+    "current_rate": 2.25,
+    "rate_note": "Overnight rate target, held steady for 6 consecutive decisions",
+    "stance": "neutral",
+    "stance_note": "Holding steady; growth improving but energy-driven inflation risk from Middle East conflict keeps a hawkish bias in play without active tightening yet",
+    "last_updated": "2026-07-26",
+    "next_meeting": "2026-09-02"
   }
 }

@@ -57,7 +57,9 @@ def run_analysis_cycle(
         pair: _pct_change(provider.get_candles(pair, ENTRY_GRANULARITY, STRENGTH_LOOKBACK_CANDLES))
         for pair in required_pairs
     }
-    currency_strength_result = compute_currency_strength(pair_pct_changes)
+    currency_strength_result = compute_currency_strength(
+        pair_pct_changes, tracked_currencies=[tracked_base, tracked_quote]
+    )
 
     # 3. Macro Engine — no data provider needed, reads the rate config file
     macro_result = compute_macro_bias(tracked_base, tracked_quote)
