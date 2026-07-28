@@ -26,5 +26,23 @@
     "stance_note": "Holding steady; growth improving but energy-driven inflation risk from Middle East conflict keeps a hawkish bias in play without active tightening yet",
     "last_updated": "2026-07-26",
     "next_meeting": "2026-09-02"
+  },
+  "GBP": {
+    "central_bank": "Bank of England",
+    "current_rate": 3.75,
+    "rate_note": "Bank Rate, held steady in a 7-2 vote on 2026-06-18 (2 dissents favored a hike to 4.00%)",
+    "stance": "hawkish",
+    "stance_note": "Holding but hawkish-leaning; services inflation rising (3.7%) keeps a hike on the table, Middle East conflict adding energy-driven inflation risk",
+    "last_updated": "2026-07-26",
+    "next_meeting": "2026-07-30"
+  },
+  "JPY": {
+    "central_bank": "Bank of Japan",
+    "current_rate": 1.00,
+    "rate_note": "Policy rate, hiked 25bps from 0.75% effective 2026-06-17 — highest in 31 years",
+    "stance": "hawkish",
+    "stance_note": "Actively normalizing; yen weakness (near 40-year low) adding inflation risk, officials reportedly open to hiking faster than consensus expects",
+    "last_updated": "2026-07-26",
+    "next_meeting": "2026-07-31"
   }
 }
