@@ -32,7 +32,17 @@ TREND_CANDLE_COUNT = 50
 
 
 def _pct_change(candles: list[dict]) -> float:
-    """% change from the first to the last candle's close, in percentage points."""
+    """% change from the first to the last candle's close, in percentage points.
+
+    Returns 0.0 (neutral — no signal) if there aren't at least 2
+    candles to compare. This happens at the very edges of a backtest's
+    historical data — e.g. if different pairs' cached history windows
+    don't perfectly align (fetched at different times, so their
+    "3 months back" start points differ slightly) — rather than
+    crashing on an empty list.
+    """
+    if len(candles) < 2:
+        return 0.0
     first_close = candles[0]["close"]
     last_close = candles[-1]["close"]
     return (last_close - first_close) / first_close * 100.0
