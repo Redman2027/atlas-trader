@@ -31,8 +31,11 @@ from atlas_trader.journal import get_connection
 TRACKED_PAIRS = [
     PairConfig("EUR_USD", "EUR", "USD"),
     PairConfig("GBP_USD", "GBP", "USD"),
+    PairConfig("USD_JPY", "USD", "JPY"),
+    PairConfig("EUR_JPY", "EUR", "JPY"),
+    PairConfig("GBP_JPY", "GBP", "JPY"),
 ]
-MONTHS = 3
+MONTHS = 6
 
 DB_PATH = "data/backtest_atlas_trader.db"
 MODEL_PATH = "data/backtest_ml_model.json"

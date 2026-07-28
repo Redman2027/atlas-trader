@@ -22,6 +22,9 @@ from atlas_trader.loop import run_forever
 TRACKED_PAIRS = [
     PairConfig("EUR_USD", "EUR", "USD"),
     PairConfig("GBP_USD", "GBP", "USD"),
+    PairConfig("USD_JPY", "USD", "JPY"),
+    PairConfig("EUR_JPY", "EUR", "JPY"),
+    PairConfig("GBP_JPY", "GBP", "JPY"),
 ]
 
 
