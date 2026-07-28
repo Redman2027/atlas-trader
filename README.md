@@ -44,13 +44,25 @@ wiring anymore.
 
 This is what actually runs 24/5 on the dedicated PC. Each cycle:
 checks any open trade for a close (and lets the ML layer learn from
-it immediately), then runs one full analysis pass and opens a trade
-if warranted (skipping if already in a position).
+it immediately), then runs one full analysis pass per tracked pair and
+opens a trade if warranted (skipping a pair only if already in a
+position on THAT pair — being long EUR_USD doesn't block a new
+position on GBP_USD, they're independent instruments).
 
 ```bash
 python run_loop.py --mock     # synthetic data, no credentials needed
-python run_loop.py            # real OANDA data (needs config/oanda_credentials.json)
+python run_loop.py            # real OANDA data, tracks EUR_USD + GBP_USD
+python run_loop.py --single   # original single-pair mode (EUR_USD only)
 ```
+
+Tracked pairs are set in `TRACKED_PAIRS` at the top of `run_loop.py`
+(a list of `PairConfig(entry_pair, tracked_base, tracked_quote)`).
+Currently EUR/GBP/USD/JPY are all configured in the Macro Engine, so
+adding e.g. `PairConfig("USD_JPY", "USD", "JPY")` to the list is all
+it takes to track a third pair — no other code changes needed. Pairs
+sharing currencies (like EUR_USD and GBP_USD both needing USD) share
+one fetch of the Currency Strength basket per cycle instead of each
+re-fetching nearly the same data.
 
 **Windows deployment (once ready to run continuously):**
 - **Task Scheduler** — simplest option. Create a task that runs
@@ -61,8 +73,9 @@ python run_loop.py            # real OANDA data (needs config/oanda_credentials.
   the PC never pauses itself.
 
 `atlas_trader/loop.py` also exposes `is_market_open()` (simplified
-weekday/UTC-hour check — doesn't account for holidays) and
-`run_one_cycle()` / `check_open_trades()` if you want to run things
+weekday/UTC-hour check — doesn't account for holidays),
+`run_one_cycle()` / `run_one_cycle_multi()`, and `check_open_trades()`
+if you want to run things
 manually or step through a single cycle for debugging.
 
 Sentiment Engine and a live news/calendar feed are deferred to v2.
@@ -381,18 +394,28 @@ what's needed for testing outside market hours.
 - [x] **Backtest Engine** — replays real historical OANDA data through
       the exact same pipeline and loop used for live trading, no other
       module changes needed (`atlas_trader/backtest/`)
+- [x] **Multi-pair support** — tracks EUR_USD + GBP_USD simultaneously
+      with independent per-pair positions, sharing one Currency
+      Strength basket fetch across all tracked pairs each cycle
+      (`atlas_trader/data_engine/multi_pair.py`)
 
 ## Backtest Engine
 
 Runs the entire system — Technical, Currency Strength, Macro, Voting,
 Risk, Journal, ML — against real historical OANDA data instead of live
-data, using the same `run_one_cycle()` the live loop uses. This works
-with zero changes to any other module because everything was built
-against the `DataProvider` abstraction from the start.
+data, using the same `run_one_cycle()`/`run_one_cycle_multi()` the
+live loop uses. This works with zero changes to any other module
+because everything was built against the `DataProvider` abstraction
+from the start.
 
 ```bash
-python backtest.py
+python backtest.py             # EUR_USD + GBP_USD together
+python backtest.py --single    # EUR_USD only
 ```
+
+Multi-pair backtesting uses the first tracked pair's timestamps as the
+shared master clock — real forex 5-minute candles all align to the
+same UTC grid market-wide, so this is safe.
 
 First run downloads and caches several months of 5M/4H/1D candles for
 every pair the Currency Strength Matrix needs (paginated — OANDA caps

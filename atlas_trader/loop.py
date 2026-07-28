@@ -26,7 +26,7 @@ from __future__ import annotations
 import time
 from datetime import datetime, timezone
 
-from atlas_trader.data_engine import DataProvider, run_analysis_cycle
+from atlas_trader.data_engine import DataProvider, PairConfig, run_analysis_cycle, run_multi_pair_cycle
 from atlas_trader.journal import (
     Setup,
     Trade,
@@ -36,6 +36,7 @@ from atlas_trader.journal import (
     open_trade,
     close_trade,
     get_open_trades,
+    get_open_trades_for_pair,
     get_setup_with_trade,
 )
 from atlas_trader.ml import OnlineTradeModel, classify_loss_cause
@@ -103,36 +104,16 @@ def check_open_trades(provider: DataProvider, conn, model: OnlineTradeModel, mod
         )
 
 
-def run_one_cycle(
-    provider: DataProvider,
-    conn,
-    model: OnlineTradeModel,
-    model_path=None,
-    balance_cap: float = 2_000.0,
-    tracked_base: str = "EUR",
-    tracked_quote: str = "USD",
-    entry_pair: str = "EUR_USD",
-    min_log_threshold: float | None = None,
-    trade_threshold: float | None = None,
-) -> dict:
-    """One full pass: check existing trades, then look for a new setup."""
-    check_open_trades(provider, conn, model, model_path)
-
-    result = run_analysis_cycle(
-        provider,
-        tracked_base,
-        tracked_quote,
-        entry_pair,
-        balance_cap,
-        min_log_threshold=min_log_threshold,
-        trade_threshold=trade_threshold,
-    )
+def _log_setup_and_maybe_trade(provider: DataProvider, conn, result: dict, has_open_position: bool) -> int | None:
+    """Shared logic: log the setup if it clears the log threshold, and
+    open a trade if it clears the trade threshold and there's no
+    existing open position for this specific pair. Used by both the
+    single-pair and multi-pair cycle functions so the behavior stays
+    identical either way."""
     voting = result["voting"]
-
     if not voting["should_log"]:
-        return result
+        return None
 
-    has_open_position = len(get_open_trades(conn)) > 0
     will_trade = bool(voting["should_trade"] and result["trade_plan"] and not has_open_position)
 
     setup = Setup(
@@ -171,11 +152,79 @@ def run_one_cycle(
             oanda_trade_id=broker_trade_id,
         )
         open_trade(conn, trade)
-        print(f"  Opened trade: {plan['direction']} {plan['position_size_units']} units")
+        print(f"  [{result['pair']}] Opened trade: {plan['direction']} {plan['position_size_units']} units")
     elif voting["should_trade"] and has_open_position:
-        print("  Signal cleared trade threshold but skipped — already in a position.")
+        print(f"  [{result['pair']}] Signal cleared trade threshold but skipped — already in a position on this pair.")
+
+    return setup_id
+
+
+def run_one_cycle(
+    provider: DataProvider,
+    conn,
+    model: OnlineTradeModel,
+    model_path=None,
+    balance_cap: float = 2_000.0,
+    tracked_base: str = "EUR",
+    tracked_quote: str = "USD",
+    entry_pair: str = "EUR_USD",
+    min_log_threshold: float | None = None,
+    trade_threshold: float | None = None,
+) -> dict:
+    """One full pass for a SINGLE pair: check existing trades, then look
+    for a new setup. For multiple pairs in one cycle, use
+    run_one_cycle_multi() instead."""
+    check_open_trades(provider, conn, model, model_path)
+
+    result = run_analysis_cycle(
+        provider,
+        tracked_base,
+        tracked_quote,
+        entry_pair,
+        balance_cap,
+        min_log_threshold=min_log_threshold,
+        trade_threshold=trade_threshold,
+    )
+
+    has_open_position = len(get_open_trades_for_pair(conn, entry_pair)) > 0
+    _log_setup_and_maybe_trade(provider, conn, result, has_open_position)
 
     return result
+
+
+def run_one_cycle_multi(
+    provider: DataProvider,
+    conn,
+    model: OnlineTradeModel,
+    pairs: list[PairConfig],
+    model_path=None,
+    balance_cap: float = 2_000.0,
+    min_log_threshold: float | None = None,
+    trade_threshold: float | None = None,
+) -> dict[str, dict]:
+    """One full pass across MULTIPLE pairs: checks all open trades once
+    (pair-agnostic), then runs every tracked pair's analysis — sharing
+    one Currency Strength basket fetch across all of them — with each
+    pair's position guard checked independently. Being long EUR_USD
+    doesn't block a new position on GBP_USD; they're separate
+    instruments.
+    """
+    check_open_trades(provider, conn, model, model_path)
+
+    results = run_multi_pair_cycle(
+        provider,
+        pairs,
+        balance_cap=balance_cap,
+        min_log_threshold=min_log_threshold,
+        trade_threshold=trade_threshold,
+    )
+
+    for pair_config in pairs:
+        result = results[pair_config.entry_pair]
+        has_open_position = len(get_open_trades_for_pair(conn, pair_config.entry_pair)) > 0
+        _log_setup_and_maybe_trade(provider, conn, result, has_open_position)
+
+    return results
 
 
 def run_forever(
@@ -184,9 +233,19 @@ def run_forever(
     model_path=None,
     poll_seconds: int = DEFAULT_POLL_SECONDS,
     balance_cap: float = 2_000.0,
+    pairs: list[PairConfig] | None = None,
+    tracked_base: str = "EUR",
+    tracked_quote: str = "USD",
+    entry_pair: str = "EUR_USD",
 ) -> None:
     """Run continuously until interrupted (Ctrl+C). This is what should
-    run 24/5 on the dedicated PC."""
+    run 24/5 on the dedicated PC.
+
+    Pass `pairs` (a list of PairConfig) to track multiple pairs at
+    once. If omitted, falls back to the original single-pair behavior
+    using `tracked_base`/`tracked_quote`/`entry_pair` — fully backward
+    compatible with existing single-pair setups.
+    """
     init_db(db_path) if db_path else init_db()
     conn = get_connection(db_path) if db_path else get_connection()
     model = OnlineTradeModel.load(model_path) if model_path else OnlineTradeModel.load()
@@ -197,9 +256,26 @@ def run_forever(
         try:
             if not is_market_open():
                 print(f"[{timestamp}] Market closed — sleeping.")
+            elif pairs:
+                results = run_one_cycle_multi(
+                    provider, conn, model, pairs, model_path=model_path, balance_cap=balance_cap
+                )
+                for pair_symbol, result in results.items():
+                    voting = result["voting"]
+                    print(
+                        f"[{timestamp}] {pair_symbol}: confidence={voting['confidence_score']} "
+                        f"direction={voting['direction']} should_trade={voting['should_trade']}"
+                    )
             else:
                 result = run_one_cycle(
-                    provider, conn, model, model_path=model_path, balance_cap=balance_cap
+                    provider,
+                    conn,
+                    model,
+                    model_path=model_path,
+                    balance_cap=balance_cap,
+                    tracked_base=tracked_base,
+                    tracked_quote=tracked_quote,
+                    entry_pair=entry_pair,
                 )
                 voting = result["voting"]
                 print(

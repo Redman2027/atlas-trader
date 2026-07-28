@@ -46,9 +46,17 @@ def run_analysis_cycle(
     balance_cap: float = 2_000.0,
     min_log_threshold: float | None = None,
     trade_threshold: float | None = None,
+    pair_pct_changes: dict[str, float] | None = None,
 ) -> dict:
     """Run one full pass: fetch data -> Technical -> Currency Strength ->
     Macro -> Voting -> (if should_trade) Risk.
+
+    `pair_pct_changes`, if supplied, skips fetching the Currency Strength
+    basket and reuses this pre-fetched data instead — this is what lets
+    multiple tracked pairs share a single fetch of the (mostly
+    overlapping) 8-major basket in one cycle, instead of each pair
+    re-fetching nearly the same data. If omitted, fetches it directly
+    (the original single-pair behavior, unchanged).
 
     Returns a dict with every module's output plus a `trade_plan`
     (None unless the setup cleared the trade threshold) — everything
@@ -71,11 +79,12 @@ def run_analysis_cycle(
     trend_1d_result = compute_technical_bias(trend_1d_technical)
 
     # 2. Currency Strength Matrix — needs the full pair basket
-    required_pairs = get_required_pairs([tracked_base, tracked_quote])
-    pair_pct_changes = {
-        pair: _pct_change(provider.get_candles(pair, ENTRY_GRANULARITY, STRENGTH_LOOKBACK_CANDLES))
-        for pair in required_pairs
-    }
+    if pair_pct_changes is None:
+        required_pairs = get_required_pairs([tracked_base, tracked_quote])
+        pair_pct_changes = {
+            pair: _pct_change(provider.get_candles(pair, ENTRY_GRANULARITY, STRENGTH_LOOKBACK_CANDLES))
+            for pair in required_pairs
+        }
     currency_strength_result = compute_currency_strength(
         pair_pct_changes, tracked_currencies=[tracked_base, tracked_quote]
     )

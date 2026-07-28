@@ -6,6 +6,7 @@ from .repository import (
     open_trade,
     close_trade,
     get_open_trades,
+    get_open_trades_for_pair,
     get_setup_with_trade,
 )
 
@@ -20,5 +21,6 @@ __all__ = [
     "open_trade",
     "close_trade",
     "get_open_trades",
+    "get_open_trades_for_pair",
     "get_setup_with_trade",
 ]

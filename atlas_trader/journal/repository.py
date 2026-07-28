@@ -108,8 +108,27 @@ def close_trade(
 
 
 def get_open_trades(conn: sqlite3.Connection) -> list[sqlite3.Row]:
-    """Return all trades currently open."""
+    """Return all trades currently open, across every pair."""
     return conn.execute("SELECT * FROM trades WHERE status = 'open'").fetchall()
+
+
+def get_open_trades_for_pair(conn: sqlite3.Connection, pair: str) -> list[sqlite3.Row]:
+    """Return open trades for one specific pair only.
+
+    `trades` doesn't store the pair directly (only `setups` does), so
+    this joins through to filter — needed for the multi-pair position
+    guard: being long EUR_USD shouldn't block opening a position on
+    GBP_USD, since they're independent instruments.
+    """
+    return conn.execute(
+        """
+        SELECT trades.*
+        FROM trades
+        JOIN setups ON trades.setup_id = setups.id
+        WHERE trades.status = 'open' AND setups.pair = ?
+        """,
+        (pair,),
+    ).fetchall()
 
 
 def get_setup_with_trade(conn: sqlite3.Connection, setup_id: int) -> dict[str, Any]:
