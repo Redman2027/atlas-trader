@@ -1,0 +1,10 @@
+{
+  "weights": {
+    "macro_bias": -0.375,
+    "currency_strength_bias": -1.0777499999999995,
+    "technical_bias": -0.9380000000000004,
+    "confidence_score": 1.1547500000000004
+  },
+  "bias": 0.025,
+  "trades_seen": 7
+}
