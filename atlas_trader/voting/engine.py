@@ -58,7 +58,17 @@ DEFAULT_WEIGHTS_WITH_TREND = {
 }
 
 MIN_LOG_THRESHOLD = 40.0
-TRADE_THRESHOLD = 65.0
+
+# CALIBRATION NOTE (from a real 3-month backtest, after the Currency
+# Strength recalibration): the original value of 65 assumed all five
+# components could realistically hit extreme values at the same
+# moment. In practice, short-term (5M) and longer-term (4H/1D) extremes
+# don't peak simultaneously — real observed confidence over 3 months
+# topped out around 50-56, even with several components already near
+# their own ceiling. 65 was structurally unreachable. 50 lets genuinely
+# strong, well-aligned setups actually trade while still requiring real
+# multi-component agreement.
+TRADE_THRESHOLD = 50.0
 
 # If both higher-timeframe trends agree with each other AND oppose the
 # short-term composite direction by at least this much, veto the trade
