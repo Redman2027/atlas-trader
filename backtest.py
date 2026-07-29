@@ -35,7 +35,7 @@ TRACKED_PAIRS = [
     PairConfig("EUR_JPY", "EUR", "JPY"),
     PairConfig("GBP_JPY", "GBP", "JPY"),
 ]
-MONTHS = 6
+MONTHS = 12
 
 DB_PATH = "data/backtest_atlas_trader.db"
 MODEL_PATH = "data/backtest_ml_model.json"
