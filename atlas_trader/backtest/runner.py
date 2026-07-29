@@ -22,7 +22,7 @@ def run_backtest(
     entry_pair: str = "EUR_USD",
     tracked_base: str = "EUR",
     tracked_quote: str = "USD",
-    balance_cap: float = 2_000.0,
+    balance_cap: float | None = None,
     db_path=None,
     model_path=None,
     progress_every: int = 500,

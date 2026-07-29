@@ -53,7 +53,7 @@ def run_analysis_cycle(
     tracked_base: str = "EUR",
     tracked_quote: str = "USD",
     entry_pair: str = "EUR_USD",
-    balance_cap: float = 2_000.0,
+    balance_cap: float | None = None,
     min_log_threshold: float | None = None,
     trade_threshold: float | None = None,
     pair_pct_changes: dict[str, float] | None = None,

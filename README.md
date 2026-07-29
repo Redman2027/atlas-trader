@@ -295,12 +295,16 @@ the bigger picture at all.
 
 ## Risk Engine
 
-ATR-based dynamic position sizing against the capped effective balance
-(`min(real_balance, balance_cap)`). Defaults: 1% risk per trade,
-stop-loss = 1.5x ATR, take-profit = 1.5x the stop distance (1.5:1
-reward:risk), and a 20:1 max-leverage safety clamp so an unusually
-tight ATR reading can never demand an oversized position. All defaults
-live at the top of `atlas_trader/risk/engine.py` and are easy to retune.
+ATR-based dynamic position sizing. `balance_cap` is optional: pass a
+number to size against `min(real_balance, balance_cap)` (the original
+behavior — useful for testing with a smaller notional than the real
+account), or pass `None` (the current default everywhere in the
+codebase) to size directly against the real account balance, scaling
+naturally as it grows or shrinks. Either way, money management rules —
+1% risk per trade, the 1.5:1 reward:risk ratio, and the 20:1
+max-leverage safety clamp — still fully apply; the cap only changes
+what "100%" means, not whether the guardrails exist. All defaults live
+at the top of `atlas_trader/risk/engine.py` and are easy to retune.
 
 ```python
 from atlas_trader.risk import compute_trade_plan
@@ -310,12 +314,12 @@ plan = compute_trade_plan(
     entry_price=1.0850,
     atr=0.0007,              # from the Technical Engine
     account_balance=100_000, # real account balance
-    balance_cap=2_000,       # effective balance is capped here
+    balance_cap=None,        # scales to the full real balance
 )
 # {
 #   "direction": "long", "entry_price": 1.085,
 #   "stop_loss": 1.08395, "take_profit": 1.08658,
-#   "position_size_units": 19047,
+#   "position_size_units": 952380,
 #   "sizing_detail": {...}   # full breakdown for the Journal's feature_snapshot
 # }
 ```

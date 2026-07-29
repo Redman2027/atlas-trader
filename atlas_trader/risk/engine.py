@@ -1,11 +1,14 @@
 """
-Risk Engine — ATR-based dynamic position sizing against a capped
-effective balance.
+Risk Engine — ATR-based dynamic position sizing, optionally against a
+capped effective balance.
 
-Core rule (locked in during design): if the real account balance is
-larger than a configured cap, size as if the account were only the
-cap amount. e.g. real balance $100,000, cap $2,000 -> sized as a
-$2,000 account regardless of what's actually in the account.
+Core rule: if `balance_cap` is set, and the real account balance is
+larger than it, size as if the account were only the cap amount. e.g.
+real balance $100,000, cap $2,000 -> sized as a $2,000 account
+regardless of what's actually in the account. If `balance_cap` is
+None, position sizing scales with the REAL account balance directly —
+money management rules (risk % per trade, the leverage safety clamp)
+still fully apply either way, this only changes what "100%" means.
 
 Stop-loss distance is a multiple of ATR (volatility-based, not a fixed
 pip count), and position size is derived from how much of the
@@ -27,14 +30,17 @@ DEFAULT_REWARD_RISK_RATIO = 1.5  # take-profit distance = stop-loss distance * t
 DEFAULT_MAX_LEVERAGE = 20.0      # safety cap: position value can't exceed effective_balance * this
 
 
-def compute_effective_balance(account_balance: float, balance_cap: float) -> float:
-    """The smaller of the real balance and the configured cap."""
+def compute_effective_balance(account_balance: float, balance_cap: float | None) -> float:
+    """The smaller of the real balance and the configured cap — or the
+    real balance directly if `balance_cap` is None (uncapped)."""
+    if balance_cap is None:
+        return account_balance
     return min(account_balance, balance_cap)
 
 
 def compute_position_size(
     account_balance: float,
-    balance_cap: float,
+    balance_cap: float | None,
     atr: float,
     entry_price: float,
     risk_pct: float = DEFAULT_RISK_PCT,
@@ -82,7 +88,7 @@ def compute_trade_plan(
     entry_price: float,
     atr: float,
     account_balance: float,
-    balance_cap: float,
+    balance_cap: float | None,
     risk_pct: float = DEFAULT_RISK_PCT,
     atr_multiplier: float = DEFAULT_ATR_MULTIPLIER,
     reward_risk_ratio: float = DEFAULT_REWARD_RISK_RATIO,

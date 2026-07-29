@@ -34,7 +34,7 @@ class PairConfig:
 def run_multi_pair_cycle(
     provider: DataProvider,
     pairs: list[PairConfig],
-    balance_cap: float = 2_000.0,
+    balance_cap: float | None = None,
     min_log_threshold: float | None = None,
     trade_threshold: float | None = None,
 ) -> dict[str, dict]:
