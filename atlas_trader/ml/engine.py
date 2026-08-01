@@ -117,9 +117,9 @@ def classify_loss_cause(voting_result: dict, direction: str) -> str:
 
     candidates = []
     for name, comp in components.items():
-        weighted_contribution = comp["bias"] * comp["weight"]
-        if (weighted_contribution * sign) > 0:  # agreed with the trade's direction
-            candidates.append((name, abs(weighted_contribution)))
+        bias = comp["bias"]
+        if (bias * sign) > 0:  # agreed with the trade's direction
+            candidates.append((name, abs(bias)))
 
     if not candidates:
         return "unclear_no_component_agreed_with_direction"
