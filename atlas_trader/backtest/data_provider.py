@@ -28,6 +28,9 @@ system whose whole point is discipline, not the more optimistic one.
 
 from __future__ import annotations
 
+from datetime import date
+
+from atlas_trader.backtest.fetcher import _parse_oanda_time
 from atlas_trader.data_engine.base import DataProvider
 
 
@@ -49,6 +52,17 @@ class HistoricalDataProvider(DataProvider):
 
     def advance_to(self, timestamp: str) -> None:
         self._current_time = timestamp
+
+    def get_current_time(self) -> date:
+        """Return the current simulated date, derived from the backtest's
+        simulated clock (set via advance_to()). Raises if called before
+        the clock has been advanced at least once."""
+        if self._current_time is None:
+            raise ValueError(
+                "get_current_time() called before advance_to() — "
+                "no simulated time set yet."
+            )
+        return _parse_oanda_time(self._current_time).date()
 
     def get_entry_timestamps(self, pair: str, granularity: str = "M5") -> list[str]:
         """Every timestamp available for `pair`/`granularity` — what the

@@ -32,6 +32,17 @@ class DataProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_current_time(self):
+        """Return the current simulated or real time as a datetime.date.
+
+        For HistoricalDataProvider this is the backtest's simulated clock
+        (derived from the current candle being replayed). For live providers
+        this is today's real date. Used to derive `trade_date` for
+        date-aware macro-history lookups (see macro/engine.py).
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def place_order(
         self, pair: str, direction: str, units: int, stop_loss: float, take_profit: float
     ) -> str:

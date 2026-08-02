@@ -101,6 +101,11 @@ class OandaDataProvider(DataProvider):
         data = response.json()
         return float(data["account"]["balance"])
 
+    def get_current_time(self):
+        """Live trading — always today's real date."""
+        from datetime import date
+        return date.today()
+
     def place_order(
         self, pair: str, direction: str, units: int, stop_loss: float, take_profit: float
     ) -> str:

@@ -104,8 +104,10 @@ def run_analysis_cycle(
         pair_pct_changes, tracked_currencies=[tracked_base, tracked_quote]
     )
 
-    # 3. Macro Engine — no data provider needed, reads the rate config file
-    macro_result = compute_macro_bias(tracked_base, tracked_quote)
+    # 3. Macro Engine — reads the rate config file, but needs the current
+    # simulated/real date to look up rates as of that point in time
+    trade_date = provider.get_current_time()
+    macro_result = compute_macro_bias(tracked_base, tracked_quote, trade_date)
 
     # 4. Voting/Confidence Engine
     voting_kwargs = {}

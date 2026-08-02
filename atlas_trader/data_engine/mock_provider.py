@@ -16,6 +16,7 @@ from .base import DataProvider
 # Roughly realistic per-candle step size by granularity, in price terms.
 GRANULARITY_STEP = {
     "M5": 0.0002,
+    "H1": 0.0008,
     "H4": 0.0015,
     "D": 0.0040,
 }
@@ -65,6 +66,14 @@ class MockDataProvider(DataProvider):
 
     def get_account_balance(self) -> float:
         return self._account_balance
+
+    def get_current_time(self):
+        """MockDataProvider has no real clock — this is never used by the
+        real backtest path (which uses HistoricalDataProvider instead).
+        Returns a fixed placeholder date only to satisfy the abstract
+        interface for standalone mock-provider testing."""
+        from datetime import date
+        return date(2026, 1, 1)
 
     def place_order(
         self, pair: str, direction: str, units: int, stop_loss: float, take_profit: float
