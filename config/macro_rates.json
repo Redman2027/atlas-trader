@@ -1,48 +1,60 @@
 {
-  "_comment": "Update after each Fed / ECB rate decision. 'stance' is your read of the last statement's tone: hawkish, neutral, or dovish. Next meeting dates keep this from going stale silently.",
+  "_comment": "Historical policy rate by effective date. One entry per rate CHANGE (not per meeting) — the rate holds until the next dated entry. Stance is derived programmatically at lookup time from the trajectory, not stored here. Sources: federalreserve.gov, ecb.europa.eu, bankofengland.co.uk, boj.or.jp, bankofcanada.ca (primary announcements) as of session date 2026-08-01, covering back to mid-2023 to support 6-month lookback stance derivation from the start of the 24-month backtest window (2024-08-01).",
   "USD": {
     "central_bank": "Federal Reserve",
-    "current_rate": 3.75,
-    "rate_note": "Upper bound of target range, currently 3.50-3.75%",
-    "stance": "hawkish",
-    "stance_note": "Holding steady but flagged inflation/energy risk (Iran conflict); one cut still projected later in 2026 but timing uncertain",
-    "last_updated": "2026-07-21",
-    "next_meeting": "2026-07-29"
+    "rate_history": [
+      {"effective_date": "2023-07-27", "rate": 5.50},
+      {"effective_date": "2024-09-19", "rate": 5.00},
+      {"effective_date": "2024-11-08", "rate": 4.75},
+      {"effective_date": "2024-12-19", "rate": 4.50},
+      {"effective_date": "2025-09-18", "rate": 4.25},
+      {"effective_date": "2025-10-30", "rate": 4.00},
+      {"effective_date": "2025-12-11", "rate": 3.75}
+    ]
   },
   "EUR": {
     "central_bank": "European Central Bank",
-    "current_rate": 2.25,
-    "rate_note": "Deposit facility rate, hiked 25bps from 2.00% effective 2026-06-17",
-    "stance": "hawkish",
-    "stance_note": "Actively tightening due to energy-driven inflation shock; 2026 headline inflation projected at 3%",
-    "last_updated": "2026-07-21",
-    "next_meeting": "2026-07-23"
-  },
-  "CAD": {
-    "central_bank": "Bank of Canada",
-    "current_rate": 2.25,
-    "rate_note": "Overnight rate target, held steady for 6 consecutive decisions",
-    "stance": "neutral",
-    "stance_note": "Holding steady; growth improving but energy-driven inflation risk from Middle East conflict keeps a hawkish bias in play without active tightening yet",
-    "last_updated": "2026-07-26",
-    "next_meeting": "2026-09-02"
+    "rate_history": [
+      {"effective_date": "2023-09-20", "rate": 4.00},
+      {"effective_date": "2025-06-11", "rate": 2.00},
+      {"effective_date": "2026-06-17", "rate": 2.25}
+    ]
   },
   "GBP": {
     "central_bank": "Bank of England",
-    "current_rate": 3.75,
-    "rate_note": "Bank Rate, held steady in a 7-2 vote on 2026-06-18 (2 dissents favored a hike to 4.00%)",
-    "stance": "hawkish",
-    "stance_note": "Holding but hawkish-leaning; services inflation rising (3.7%) keeps a hike on the table, Middle East conflict adding energy-driven inflation risk",
-    "last_updated": "2026-07-26",
-    "next_meeting": "2026-07-30"
+    "rate_history": [
+      {"effective_date": "2023-08-03", "rate": 5.25},
+      {"effective_date": "2024-08-01", "rate": 5.00},
+      {"effective_date": "2024-11-07", "rate": 4.75},
+      {"effective_date": "2025-02-06", "rate": 4.50},
+      {"effective_date": "2025-05-08", "rate": 4.25},
+      {"effective_date": "2025-08-07", "rate": 4.00},
+      {"effective_date": "2025-12-18", "rate": 3.75}
+    ]
   },
   "JPY": {
     "central_bank": "Bank of Japan",
-    "current_rate": 1.00,
-    "rate_note": "Policy rate, hiked 25bps from 0.75% effective 2026-06-17 — highest in 31 years",
-    "stance": "hawkish",
-    "stance_note": "Actively normalizing; yen weakness (near 40-year low) adding inflation risk, officials reportedly open to hiking faster than consensus expects",
-    "last_updated": "2026-07-26",
-    "next_meeting": "2026-07-31"
+    "rate_history": [
+      {"effective_date": "2024-03-19", "rate": 0.00},
+      {"effective_date": "2024-07-31", "rate": 0.25},
+      {"effective_date": "2025-01-24", "rate": 0.50},
+      {"effective_date": "2025-12-19", "rate": 0.75},
+      {"effective_date": "2026-06-16", "rate": 1.00}
+    ]
+  },
+  "CAD": {
+    "central_bank": "Bank of Canada",
+    "rate_history": [
+      {"effective_date": "2023-07-12", "rate": 5.00},
+      {"effective_date": "2024-06-05", "rate": 4.75},
+      {"effective_date": "2024-07-24", "rate": 4.50},
+      {"effective_date": "2024-09-04", "rate": 4.25},
+      {"effective_date": "2024-10-23", "rate": 3.75},
+      {"effective_date": "2024-12-11", "rate": 3.25},
+      {"effective_date": "2025-01-29", "rate": 3.00},
+      {"effective_date": "2025-03-12", "rate": 2.75},
+      {"effective_date": "2025-09-17", "rate": 2.50},
+      {"effective_date": "2025-10-29", "rate": 2.25}
+    ]
   }
 }
