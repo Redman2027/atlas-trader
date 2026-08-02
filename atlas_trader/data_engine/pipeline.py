@@ -28,6 +28,7 @@ STRENGTH_LOOKBACK_CANDLES = 20
 # 26+9=35 minimum) comfortable room to warm up.
 TREND_4H_GRANULARITY = "H4"
 TREND_1D_GRANULARITY = "D"
+TREND_1H_GRANULARITY = "H1"
 TREND_CANDLE_COUNT = 50
 
 
@@ -88,6 +89,10 @@ def run_analysis_cycle(
     trend_1d_technical = analyze_candles(candles_1d)
     trend_1d_result = compute_technical_bias(trend_1d_technical)
 
+    candles_1h = provider.get_candles(entry_pair, TREND_1H_GRANULARITY, TREND_CANDLE_COUNT)
+    trend_1h_technical = analyze_candles(candles_1h)
+    trend_1h_result = compute_technical_bias(trend_1h_technical)
+
     # 2. Currency Strength Matrix — needs the full pair basket
     if pair_pct_changes is None:
         required_pairs = get_required_pairs([tracked_base, tracked_quote])
@@ -117,6 +122,7 @@ def run_analysis_cycle(
         tracked_quote=tracked_quote,
         trend_4h_result=trend_4h_result,
         trend_1d_result=trend_1d_result,
+        trend_1h_result=trend_1h_result,
         **voting_kwargs,
     )
 
@@ -126,6 +132,7 @@ def run_analysis_cycle(
         "technical": technical_result,
         "trend_4h": trend_4h_technical,
         "trend_1d": trend_1d_technical,
+        "trend_1h": trend_1h_technical,
         "currency_strength": currency_strength_result,
         "macro": macro_result,
         "voting": voting_result,
