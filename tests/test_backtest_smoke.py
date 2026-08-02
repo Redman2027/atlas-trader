@@ -70,6 +70,7 @@ def _build_synthetic_history():
     m5_count = 800  # a few days of 5-minute candles
     h4_count = 100
     d_count = 100
+    h1_count = 400  # needs to cover the same trend_start window as H4/D
 
     history = {}
     for pair in required_pairs:
@@ -83,6 +84,9 @@ def _build_synthetic_history():
     )
     history[(ENTRY_PAIR, "D")] = _generate_series(
         ENTRY_PAIR, trend_start, d_count, timedelta(days=1), "d1"
+    )
+    history[(ENTRY_PAIR, "H1")] = _generate_series(
+        ENTRY_PAIR, trend_start, h1_count, timedelta(hours=1), "h1"
     )
 
     return history
