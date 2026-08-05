@@ -118,11 +118,12 @@ def test_modules_disagree():
     assert result["should_trade"] is False
 
 
-def test_trend_veto_blocks_trade_against_daily_downtrend():
-    """The exact scenario that motivated this feature: a strong 5M bounce
-    says 'long', but both the 4H and 1D charts are clearly in a downtrend.
-    The veto should block the trade even though confidence alone would
-    otherwise clear the trade threshold."""
+def test_strong_daily_downtrend_flips_direction_against_5m_bounce():
+    """A strong 5M bounce says 'long', but both the 4H and 1D charts are
+    clearly in a downtrend. Trend now carries real weight (40% combined)
+    directly in the composite, so a downtrend this strong on both higher
+    timeframes outweighs the 5M signal and flips direction to 'short'
+    outright -- no separate veto needed (see AtlasTrader_Handoff12.md)."""
     macro_result = compute_macro_bias(
         "EUR",
         "USD",
@@ -178,9 +179,9 @@ def test_trend_veto_blocks_trade_against_daily_downtrend():
     )
     print("Trend veto scenario:", result["direction"], result["confidence_score"], "veto:", result["trend_veto"])
 
-    assert result["direction"] == "long"  # the 5M/technical-heavy composite still leans long...
-    assert result["trend_veto"] is True  # ...but the daily/4H downtrend vetoes it
-    assert result["should_trade"] is False  # so no trade happens, regardless of confidence
+    assert result["direction"] == "short"  # strong 4H/1D downtrend outweighs the 5M bounce
+    assert result["trend_veto"] is False  # veto removed -- trend acts through composite weight now
+    assert result["should_trade"] is False  # confidence too low to clear the trade threshold
 
 
 def test_no_veto_when_trend_data_absent():

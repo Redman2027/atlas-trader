@@ -1,15 +1,30 @@
-# Local database (personal trading data — don't commit this)
+# Regenerable historical data caches (re-fetch from OANDA as needed)
+# NOTE: does not affect already-tracked 12mo D/H4/M5 files from before this
+# .gitignore existed -- git only ignores *new/untracked* files matching these
+# patterns. Existing tracked files stay tracked until explicitly removed.
+data/historical/*.json
+
+# Local databases (regenerable from backtest runs)
 data/*.db
 
-# Python
+# Scratch/temp artifacts
+*.b64
+*.bak*
+last_backtest_run.txt
+backtest_log.txt
+macro_rates_new.json
+
+# One-off patch/diagnostic scripts (changes are baked into source once applied)
+patch_*.py
+diagnose_*.py
+check_*.py
+dedup*.py
+repro.py
+
+# Backtest run logs
+backtest_*.log
+
+# Python cache
 __pycache__/
 *.pyc
-.venv/
-venv/
-
-# OS
-.DS_Store
-
-# Secrets — OANDA API keys, account IDs, etc.
-.env
-config/secrets.json
+.pytest_cache/

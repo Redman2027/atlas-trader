@@ -50,11 +50,11 @@ DEFAULT_WEIGHTS = {
 # the two higher timeframes combined (30%) now provide real trend
 # context that was missing before.
 DEFAULT_WEIGHTS_WITH_TREND = {
-    "macro": 0.20,
+    "macro": 0.15,
     "currency_strength": 0.15,
-    "technical": 0.35,
-    "trend_4h": 0.15,
-    "trend_1d": 0.15,
+    "technical": 0.30,
+    "trend_4h": 0.20,
+    "trend_1d": 0.20,
 }
 
 MIN_LOG_THRESHOLD = 40.0
@@ -144,16 +144,30 @@ def score_setup(
 
     use_trend = trend_4h_result is not None and trend_1d_result is not None
 
-    # trend_4h/trend_1d are intentionally excluded from the vote that
-    # determines direction/confidence -- they act only as an independent
-    # veto below. Folding them into the weighted composite here let a
-    # strong trend disagreement flip `direction` itself before the veto
-    # check ever ran, so the veto could never fire in exactly the
-    # scenario it exists to catch (see AtlasTrader_Handoff11.md).
-    active_weights = weights or DEFAULT_WEIGHTS
-    composite_bias = combine_biases(
-        macro_bias, currency_strength_bias, technical_bias, active_weights
-    )
+    # trend_4h/trend_1d now carry real weight directly in the composite
+    # score (see AtlasTrader_Handoff12.md) instead of acting as a separate
+    # all-or-nothing veto. The old strict-AND veto required both timeframes
+    # to independently oppose the composite AND clear a threshold -- in
+    # practice that let far too many trend-opposed setups through (365 ->
+    # 2556 trades on the 24mo run, win rate dropping to 41.7%). Folding
+    # trend back into the composite with meaningful weight (40% combined)
+    # means a strong contrary trend now pulls the score down or flips its
+    # sign directly, rather than needing a bolt-on gate to catch it.
+    if use_trend:
+        active_weights = weights or DEFAULT_WEIGHTS_WITH_TREND
+        biases = {
+            "macro": macro_bias,
+            "currency_strength": currency_strength_bias,
+            "technical": technical_bias,
+            "trend_4h": trend_4h_result["bias"],
+            "trend_1d": trend_1d_result["bias"],
+        }
+        composite_bias = _combine_weighted(biases, active_weights)
+    else:
+        active_weights = weights or DEFAULT_WEIGHTS
+        composite_bias = combine_biases(
+            macro_bias, currency_strength_bias, technical_bias, active_weights
+        )
 
     confidence_score = round(abs(composite_bias), 2)
 
@@ -164,17 +178,10 @@ def score_setup(
     else:
         direction = "none"
 
+    # Trend veto removed: trend_4h/trend_1d are now weighted directly into
+    # composite_bias above, so a strong contrary trend already suppresses
+    # or flips direction/confidence without needing a separate gate.
     trend_veto = False
-    if use_trend and direction != "none":
-        composite_sign = 1 if direction == "long" else -1
-        trend_4h_bias = trend_4h_result["bias"]
-        trend_1d_bias = trend_1d_result["bias"]
-        trend_veto = (
-            trend_4h_bias * composite_sign < 0
-            and trend_1d_bias * composite_sign < 0
-            and abs(trend_4h_bias) >= trend_veto_threshold
-            and abs(trend_1d_bias) >= trend_veto_threshold
-        )
 
     trend_1h_damper = 1.0
     trend_1h_bias = None
