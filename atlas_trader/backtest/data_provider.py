@@ -29,6 +29,7 @@ system whose whole point is discipline, not the more optimistic one.
 from __future__ import annotations
 
 from datetime import date
+import bisect
 
 from atlas_trader.backtest.fetcher import _parse_oanda_time
 from atlas_trader.data_engine.base import DataProvider
@@ -44,6 +45,7 @@ class HistoricalDataProvider(DataProvider):
         oldest-first, each a dict with open/high/low/close/time (time as
         an ISO 8601 string, e.g. '2026-07-26T21:30:00Z')."""
         self._history = candle_history
+        self._history_times: dict[tuple[str, str], list[str]] = {}
         self._current_time: str | None = None
         self._balance = start_balance
         self._open_positions: dict[str, dict] = {}
@@ -73,7 +75,13 @@ class HistoricalDataProvider(DataProvider):
         all_candles = self._history.get((pair, granularity), [])
         if self._current_time is None:
             return []
-        return [c for c in all_candles if c["time"] <= self._current_time]
+        key = (pair, granularity)
+        times = self._history_times.get(key)
+        if times is None:
+            times = [c["time"] for c in all_candles]
+            self._history_times[key] = times
+        idx = bisect.bisect_right(times, self._current_time)
+        return all_candles[:idx]
 
     def get_candles(self, pair: str, granularity: str, count: int) -> list[dict]:
         return self._candles_up_to_now(pair, granularity)[-count:]
