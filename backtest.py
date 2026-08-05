@@ -35,7 +35,7 @@ TRACKED_PAIRS = [
     PairConfig("EUR_JPY", "EUR", "JPY"),
     PairConfig("GBP_JPY", "GBP", "JPY"),
 ]
-MONTHS = 12
+MONTHS = 24
 
 DB_PATH = "data/backtest_atlas_trader.db"
 MODEL_PATH = "data/backtest_ml_model.json"
@@ -43,6 +43,7 @@ MODEL_PATH = "data/backtest_ml_model.json"
 
 def main() -> None:
     single_pair = "--single" in sys.argv
+    import pathlib as _pathlib; _pathlib.Path(DB_PATH).unlink(missing_ok=True); _pathlib.Path(MODEL_PATH).unlink(missing_ok=True); print("Reset DB and model for fresh backtest run.")
     pairs = None if single_pair else TRACKED_PAIRS
 
     if single_pair:
@@ -59,7 +60,7 @@ def main() -> None:
 
     history = fetch_and_cache(
         pairs=required_pairs,
-        granularities=["M5", "H4", "D"],
+        granularities=["M5", "H4", "D", "H1"],
         months=MONTHS,
     )
 
