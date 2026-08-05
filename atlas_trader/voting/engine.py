@@ -108,10 +108,13 @@ def score_setup(
     tracked_quote: str = "USD",
     trend_4h_result: dict | None = None,
     trend_1d_result: dict | None = None,
+    trend_1h_result: dict | None = None,
     weights: dict | None = None,
     min_log_threshold: float = MIN_LOG_THRESHOLD,
     trade_threshold: float = TRADE_THRESHOLD,
     trend_veto_threshold: float = TREND_VETO_THRESHOLD,
+    trend_1h_damper_cap: float = 0.5,
+    trend_1h_damper_strength: float = 1.0,
 ) -> dict:
     """Combine all module outputs into one explainable confidence score.
 
@@ -141,21 +144,16 @@ def score_setup(
 
     use_trend = trend_4h_result is not None and trend_1d_result is not None
 
-    if use_trend:
-        active_weights = weights or DEFAULT_WEIGHTS_WITH_TREND
-        biases = {
-            "macro": macro_bias,
-            "currency_strength": currency_strength_bias,
-            "technical": technical_bias,
-            "trend_4h": trend_4h_result["bias"],
-            "trend_1d": trend_1d_result["bias"],
-        }
-        composite_bias = _combine_weighted(biases, active_weights)
-    else:
-        active_weights = weights or DEFAULT_WEIGHTS
-        composite_bias = combine_biases(
-            macro_bias, currency_strength_bias, technical_bias, active_weights
-        )
+    # trend_4h/trend_1d are intentionally excluded from the vote that
+    # determines direction/confidence -- they act only as an independent
+    # veto below. Folding them into the weighted composite here let a
+    # strong trend disagreement flip `direction` itself before the veto
+    # check ever ran, so the veto could never fire in exactly the
+    # scenario it exists to catch (see AtlasTrader_Handoff11.md).
+    active_weights = weights or DEFAULT_WEIGHTS
+    composite_bias = combine_biases(
+        macro_bias, currency_strength_bias, technical_bias, active_weights
+    )
 
     confidence_score = round(abs(composite_bias), 2)
 
@@ -177,6 +175,16 @@ def score_setup(
             and abs(trend_4h_bias) >= trend_veto_threshold
             and abs(trend_1d_bias) >= trend_veto_threshold
         )
+
+    trend_1h_damper = 1.0
+    trend_1h_bias = None
+    if trend_1h_result is not None and direction != "none":
+        composite_sign_1h = 1 if direction == "long" else -1
+        trend_1h_bias = trend_1h_result["bias"]
+        alignment = trend_1h_bias * composite_sign_1h
+        if alignment < 0:
+            trend_1h_damper = 1.0 - min(abs(alignment) / 100.0, trend_1h_damper_cap) * trend_1h_damper_strength
+            confidence_score = round(confidence_score * trend_1h_damper, 2)
 
     components = {
         "macro": {
@@ -207,6 +215,14 @@ def score_setup(
             "detail": trend_1d_result,
         }
 
+    if trend_1h_result is not None:
+        components["trend_1h"] = {
+            "bias": trend_1h_bias,
+            "weight": None,
+            "detail": trend_1h_result,
+            "damper_applied": trend_1h_damper,
+        }
+
     return {
         "direction": direction,
         "confidence_score": confidence_score,
@@ -214,5 +230,6 @@ def score_setup(
         "should_log": confidence_score >= min_log_threshold,
         "should_trade": (confidence_score >= trade_threshold) and not trend_veto,
         "trend_veto": trend_veto,
+        "trend_1h_damper": trend_1h_damper,
         "components": components,
     }
