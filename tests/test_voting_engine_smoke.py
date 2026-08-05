@@ -28,9 +28,10 @@ def test_all_modules_agree_bullish():
         "EUR",
         "USD",
         config={
-            "EUR": {"current_rate": 3.50, "stance": "hawkish"},
-            "USD": {"current_rate": 1.00, "stance": "dovish"},
+            "EUR": {"rate_history": [{'effective_date': '2023-01-01', 'rate': 2.5}, {'effective_date': '2025-01-01', 'rate': 3.5}]},
+            "USD": {"rate_history": [{'effective_date': '2023-01-01', 'rate': 2.0}, {'effective_date': '2025-01-01', 'rate': 1.0}]},
         },
+        trade_date="2025-01-01"
     )
 
     currency_strength_result = compute_currency_strength(
@@ -75,9 +76,10 @@ def test_modules_disagree():
         "EUR",
         "USD",
         config={
-            "EUR": {"current_rate": 3.00, "stance": "hawkish"},
-            "USD": {"current_rate": 2.00, "stance": "dovish"},
+            "EUR": {"rate_history": [{'effective_date': '2023-01-01', 'rate': 2.0}, {'effective_date': '2025-01-01', 'rate': 3.0}]},
+            "USD": {"rate_history": [{'effective_date': '2023-01-01', 'rate': 3.0}, {'effective_date': '2025-01-01', 'rate': 2.0}]},
         },
+        trade_date="2025-01-01"
     )
 
     # Currency strength roughly flat/neutral
@@ -125,9 +127,10 @@ def test_trend_veto_blocks_trade_against_daily_downtrend():
         "EUR",
         "USD",
         config={
-            "EUR": {"current_rate": 2.00, "stance": "neutral"},
-            "USD": {"current_rate": 2.00, "stance": "neutral"},
+            "EUR": {"rate_history": [{'effective_date': '2023-01-01', 'rate': 2.0}, {'effective_date': '2025-01-01', 'rate': 2.0}]},
+            "USD": {"rate_history": [{'effective_date': '2023-01-01', 'rate': 2.0}, {'effective_date': '2025-01-01', 'rate': 2.0}]},
         },
+        trade_date="2025-01-01"
     )
 
     # Neutral currency strength so it doesn't influence the outcome
@@ -185,7 +188,11 @@ def test_no_veto_when_trend_data_absent():
     behave exactly like before this feature existed — no veto possible."""
     macro_result = compute_macro_bias(
         "EUR", "USD",
-        config={"EUR": {"current_rate": 3.50, "stance": "hawkish"}, "USD": {"current_rate": 1.00, "stance": "dovish"}},
+        config={
+            "EUR": {"rate_history": [{'effective_date': '2023-01-01', 'rate': 2.5}, {'effective_date': '2025-01-01', 'rate': 3.5}]},
+            "USD": {"rate_history": [{'effective_date': '2023-01-01', 'rate': 2.0}, {'effective_date': '2025-01-01', 'rate': 1.0}]},
+        },
+        trade_date="2025-01-01"
     )
     currency_strength_result = compute_currency_strength({pair: 0.5 for pair in [
         "EUR_USD", "EUR_GBP", "EUR_AUD", "EUR_NZD", "EUR_CAD", "EUR_CHF", "EUR_JPY",
