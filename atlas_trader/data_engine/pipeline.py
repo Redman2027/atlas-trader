@@ -20,7 +20,7 @@ from .base import DataProvider
 
 ENTRY_GRANULARITY = "M5"
 ENTRY_CANDLE_COUNT = 60
-STRENGTH_LOOKBACK_CANDLES = 144
+STRENGTH_LOOKBACK_CANDLES = 20
 
 # Higher-timeframe trend context — reuses the same Technical Engine math
 # on 4H and 1D candles, so a strong 5M bounce can't force a trade against
