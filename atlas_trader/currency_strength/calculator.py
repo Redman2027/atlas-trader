@@ -18,7 +18,7 @@ from .pairs import MAJOR_CURRENCIES, TRACKED_CURRENCIES, get_pairs_for_currency
 
 # How many percentage points of average signed move correspond to a
 # full swing from neutral (50) to the edge of the scale (0 or 100).
-# e.g. SCALE_SENSITIVITY = 0.2 means an average +0.2% move across a
+# e.g. SCALE_SENSITIVITY = 0.4 means an average +0.4% move across a
 # currency's pairs maps to a raw score of 100.
 #
 # CALIBRATION NOTE (from a real 3-month backtest): the original value
@@ -31,7 +31,7 @@ from .pairs import MAJOR_CURRENCIES, TRACKED_CURRENCIES, get_pairs_for_currency
 # functionally dead. 0.2 was chosen so a genuinely strong short-term
 # differential (~0.2%) can actually reach the component's full range,
 # while a quiet/flat market still correctly scores near zero.
-SCALE_SENSITIVITY = 0.2
+SCALE_SENSITIVITY = 0.4
 
 
 def _signed_change_for_currency(currency: str, pair: str, pct_change: float) -> float:
