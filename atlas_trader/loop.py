@@ -98,9 +98,11 @@ def check_open_trades(provider: DataProvider, conn, model: OnlineTradeModel, mod
         model.update(features, won=won)
         model.save(model_path) if model_path else model.save()
 
+        risk_amount = abs(trade_row["entry_price"] - trade_row["stop_loss"]) * trade_row["position_size"]
+        r_multiple = pnl / risk_amount if risk_amount else 0.0
         print(
             f"  Trade {trade_row['id']} closed: {'WIN' if won else 'LOSS'} "
-            f"pnl={pnl:.2f} loss_cause={loss_cause}"
+            f"pnl={pnl:.2f} risk_amount={risk_amount:.2f} r_multiple={r_multiple:.3f} loss_cause={loss_cause}"
         )
 
 
