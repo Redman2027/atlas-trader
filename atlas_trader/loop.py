@@ -104,6 +104,10 @@ def check_open_trades(provider: DataProvider, conn, model: OnlineTradeModel, mod
             f"  Trade {trade_row['id']} closed: {'WIN' if won else 'LOSS'} "
             f"pnl={pnl:.2f} risk_amount={risk_amount:.2f} r_multiple={r_multiple:.3f} loss_cause={loss_cause}"
         )
+        component_biases = " ".join(
+            f"{name}_bias={comp['bias']:.4f}" for name, comp in voting_snapshot["components"].items()
+        )
+        print(f"  Trade {trade_row['id']} components: outcome={'WIN' if won else 'LOSS'} {component_biases}")
 
 
 def _log_setup_and_maybe_trade(provider: DataProvider, conn, result: dict, has_open_position: bool) -> int | None:
