@@ -47,7 +47,7 @@ def test_is_market_open():
     print("Market hours checks passed.")
 
 
-def test_full_cycle_open_skip_close_learn():
+def test_full_cycle_open_skip_close_learn(monkeypatch):
     with tempfile.TemporaryDirectory() as tmp:
         db_path = Path(tmp) / "loop_test.db"
         model_path = Path(tmp) / "model.json"
@@ -60,6 +60,14 @@ def test_full_cycle_open_skip_close_learn():
         # finding a lucky seed — also proves the thresholds are
         # legitimately configurable per call, not hardcoded.
         low_thresholds = {"min_log_threshold": 5.0, "trade_threshold": 5.0}
+
+        # Trigger logic isn't what this test exercises (it tests the
+        # open->skip->close->learn lifecycle) -- force it to always fire
+        # so should_trade alone still determines whether a trade opens.
+        monkeypatch.setattr(
+            "atlas_trader.data_engine.pipeline.check_entry_trigger",
+            lambda candles, direction: {"triggered": True, "reason": "test_override"},
+        )
 
         # Cycle 1: should open a new trade
         result = run_one_cycle(provider, conn, model, model_path=model_path, **low_thresholds)

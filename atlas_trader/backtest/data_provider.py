@@ -34,6 +34,12 @@ import bisect
 from atlas_trader.backtest.fetcher import _parse_oanda_time
 from atlas_trader.data_engine.base import DataProvider
 
+# Toggle for the breakeven-stop feature (moves SL to entry+buffer once
+# price reaches 1R favorable). Added this session -- default True, but
+# can be flipped False to isolate its effect from other changes when
+# comparing backtest runs (e.g. topdown-bias architecture validation).
+BREAKEVEN_ENABLED = False
+
 
 class HistoricalDataProvider(DataProvider):
     def __init__(
@@ -100,6 +106,7 @@ class HistoricalDataProvider(DataProvider):
     ) -> str:
         trade_id = f"bt-{self._next_trade_id}"
         self._next_trade_id += 1
+        entry_price = self.get_current_price(pair)
         self._open_positions[trade_id] = {
             "pair": pair,
             "direction": direction,
@@ -107,7 +114,9 @@ class HistoricalDataProvider(DataProvider):
             "stop_loss": stop_loss,
             "take_profit": take_profit,
             "entry_time": self._current_time,
-            "entry_price": self.get_current_price(pair),
+            "entry_price": entry_price,
+            "original_sl_distance": abs(entry_price - stop_loss),
+            "breakeven_moved": False,
         }
         return trade_id
 
@@ -130,6 +139,18 @@ class HistoricalDataProvider(DataProvider):
         ]
 
         for candle in candles:
+            if BREAKEVEN_ENABLED and not position["breakeven_moved"]:
+                buffer = position["original_sl_distance"] * 0.1
+                if position["direction"] == "long":
+                    breakeven_trigger = position["entry_price"] + position["original_sl_distance"]
+                    if candle["high"] >= breakeven_trigger:
+                        position["stop_loss"] = position["entry_price"] + buffer
+                        position["breakeven_moved"] = True
+                else:
+                    breakeven_trigger = position["entry_price"] - position["original_sl_distance"]
+                    if candle["low"] <= breakeven_trigger:
+                        position["stop_loss"] = position["entry_price"] - buffer
+                        position["breakeven_moved"] = True
             if position["direction"] == "long":
                 hit_sl = candle["low"] <= position["stop_loss"]
                 hit_tp = candle["high"] >= position["take_profit"]

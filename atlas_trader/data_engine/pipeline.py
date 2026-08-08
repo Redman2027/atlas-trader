@@ -15,12 +15,13 @@ from atlas_trader.macro import compute_macro_bias
 from atlas_trader.risk import compute_trade_plan
 from atlas_trader.technical import analyze_candles, compute_technical_bias
 from atlas_trader.voting import score_setup
+from atlas_trader.technical.entry_trigger import check_entry_trigger
 
 from .base import DataProvider
 
 ENTRY_GRANULARITY = "M5"
 ENTRY_CANDLE_COUNT = 60
-STRENGTH_LOOKBACK_CANDLES = 20
+STRENGTH_LOOKBACK_CANDLES = 144
 
 # Higher-timeframe trend context — reuses the same Technical Engine math
 # on 4H and 1D candles, so a strong 5M bounce can't force a trade against
@@ -128,6 +129,12 @@ def run_analysis_cycle(
         **voting_kwargs,
     )
 
+    # 4b. 1H Entry Trigger — checks for pullback-then-resumption in the
+    # direction the composite bias settled on. Runs regardless of
+    # should_trade so we can log trigger behavior independently of the
+    # bias-vote outcome (needed to diagnose bias vs. trigger separately).
+    trigger_result = check_entry_trigger(candles_1h, voting_result["direction"])
+
     result = {
         "pair": entry_pair,
         "timeframe": ENTRY_GRANULARITY,
@@ -138,6 +145,7 @@ def run_analysis_cycle(
         "currency_strength": currency_strength_result,
         "macro": macro_result,
         "voting": voting_result,
+        "trigger": trigger_result,
         "trade_plan": None,
     }
 
@@ -147,7 +155,7 @@ def run_analysis_cycle(
     # it — trying to size a position off no volatility reading isn't
     # safe, so skip trading rather than crash or guess).
     atr = technical_result["atr"]["value"]
-    if voting_result["should_trade"] and atr is not None:
+    if voting_result["should_trade"] and trigger_result["triggered"] and atr is not None:
         entry_price = provider.get_current_price(entry_pair)
         account_balance = provider.get_account_balance()
         result["trade_plan"] = compute_trade_plan(

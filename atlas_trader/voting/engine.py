@@ -44,17 +44,17 @@ DEFAULT_WEIGHTS = {
     "technical": 0.50,
 }
 
-# 5-component weights — used whenever 4H/1D trend context is supplied,
-# which is what the real pipeline always does now. Technical (5M) stays
-# the single largest weight since it's the actual entry trigger, but
-# the two higher timeframes combined (30%) now provide real trend
-# context that was missing before.
+# 4-component weights — used whenever 4H/1D trend context is supplied,
+# which is what the real pipeline always does now. Technical (M5) was
+# removed entirely in favor of a dedicated 1H entry-trigger (pullback +
+# resumption) that gates trade entry directly rather than voting in the
+# composite. Trend_4h/trend_1d combined (60%) now carry the direction
+# call, with macro/currency_strength providing the remaining context.
 DEFAULT_WEIGHTS_WITH_TREND = {
-    "macro": 0.15,
-    "currency_strength": 0.15,
-    "technical": 0.30,
-    "trend_4h": 0.20,
-    "trend_1d": 0.20,
+    "macro": 0.20,
+    "currency_strength": 0.20,
+    "trend_4h": 0.30,
+    "trend_1d": 0.30,
 }
 
 MIN_LOG_THRESHOLD = 40.0
@@ -183,15 +183,13 @@ def score_setup(
     # or flips direction/confidence without needing a separate gate.
     trend_veto = False
 
+    # trend_1h damper retired (Handoff 18): its job — flagging 1H
+    # exhaustion/opposition — is now handled by the dedicated 1H
+    # entry-trigger (pullback + resumption), which gates trade entry
+    # directly instead of softly discounting confidence. trend_1h_bias
+    # is still captured below purely for diagnostic logging.
     trend_1h_damper = 1.0
-    trend_1h_bias = None
-    if trend_1h_result is not None and direction != "none":
-        composite_sign_1h = 1 if direction == "long" else -1
-        trend_1h_bias = trend_1h_result["bias"]
-        alignment = trend_1h_bias * composite_sign_1h
-        if alignment < 0:
-            trend_1h_damper = 1.0 - min(abs(alignment) / 100.0, trend_1h_damper_cap) * trend_1h_damper_strength
-            confidence_score = round(confidence_score * trend_1h_damper, 2)
+    trend_1h_bias = trend_1h_result["bias"] if trend_1h_result is not None else None
 
     components = {
         "macro": {

@@ -92,9 +92,17 @@ def _build_synthetic_history():
     return history
 
 
-def test_backtest_runs_and_produces_a_journal():
+def test_backtest_runs_and_produces_a_journal(monkeypatch):
     history = _build_synthetic_history()
     provider = HistoricalDataProvider(history, start_balance=100_000.0)
+
+    # Trigger logic is not what this test exercises (it tests that a
+    # backtest run produces a journal) -- force it to always fire so
+    # should_trade alone determines whether a trade opens.
+    monkeypatch.setattr(
+        "atlas_trader.data_engine.pipeline.check_entry_trigger",
+        lambda candles, direction: {"triggered": True, "reason": "test_override"},
+    )
 
     with tempfile.TemporaryDirectory() as tmp:
         db_path = Path(tmp) / "backtest_test.db"

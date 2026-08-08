@@ -49,7 +49,7 @@ def _find_seed_with_trades_on_both_pairs(max_seed: int = 100) -> int:
     raise AssertionError("No seed produced should_trade=True on both pairs simultaneously")
 
 
-def test_independent_position_guards():
+def test_independent_position_guards(monkeypatch):
     seed = _find_seed_with_trades_on_both_pairs()
     print(f"Using seed {seed} (both pairs independently clear the trade threshold).")
 
@@ -62,6 +62,14 @@ def test_independent_position_guards():
         provider = MockDataProvider(seed=seed)
 
         low_thresholds = {"min_log_threshold": 5.0, "trade_threshold": 5.0}
+
+        # Trigger logic isn't what this test exercises (it tests that
+        # two pairs can hold independent open positions) -- force it to
+        # always fire so should_trade alone determines whether a trade opens.
+        monkeypatch.setattr(
+            "atlas_trader.data_engine.pipeline.check_entry_trigger",
+            lambda candles, direction: {"triggered": True, "reason": "test_override"},
+        )
 
         # Cycle 1: both pairs should open independent trades
         run_one_cycle_multi(provider, conn, model, PAIRS, model_path=model_path, **low_thresholds)
