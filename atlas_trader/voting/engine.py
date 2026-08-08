@@ -20,12 +20,11 @@ becomes the direction. Modules that agree reinforce each other into a
 high confidence score; modules that disagree cancel each other out
 into a low one — that's the actual "voting."
 
-If both `trend_4h_result` and `trend_1d_result` are supplied, they can
-also VETO a trade outright — even if confidence otherwise clears the
-trade threshold — when both higher timeframes strongly disagree with
-the short-term composite direction. This exists specifically so a
-strong 5M bounce can't force a trade against an obvious daily
-downtrend.
+Both `trend_4h_result` and `trend_1d_result`, when supplied, are
+weighted directly into the composite above (0.30 each) rather than
+acting as a separate veto gate. A strong, aligned 4H/1D trend now
+naturally suppresses or flips direction/confidence through the
+weighted average itself -- no separate override step is needed.
 
 Two thresholds, both configurable:
     - MIN_LOG_THRESHOLD: setups scoring at or above this get logged to
@@ -70,9 +69,12 @@ MIN_LOG_THRESHOLD = 40.0
 # multi-component agreement.
 TRADE_THRESHOLD = 50.0
 
-# If both higher-timeframe trends agree with each other AND oppose the
-# short-term composite direction by at least this much, veto the trade
-# even if confidence otherwise clears TRADE_THRESHOLD.
+# DEAD/RETIRED: the separate veto gate this constant fed was removed --
+# trend_4h/trend_1d are now weighted directly into the composite bias
+# instead (see score_setup docstring above). Kept only for backward
+# compatibility since it's exported from atlas_trader.voting and a
+# couple of old one-off patch scripts still reference it. Not used by
+# any active code path.
 TREND_VETO_THRESHOLD = 40.0
 
 
@@ -112,7 +114,7 @@ def score_setup(
     weights: dict | None = None,
     min_log_threshold: float = MIN_LOG_THRESHOLD,
     trade_threshold: float = TRADE_THRESHOLD,
-    trend_veto_threshold: float = TREND_VETO_THRESHOLD,
+    trend_veto_threshold: float = TREND_VETO_THRESHOLD,  # unused -- veto gate retired, see TREND_VETO_THRESHOLD note above
     trend_1h_damper_cap: float = 0.5,
     trend_1h_damper_strength: float = 1.0,
 ) -> dict:
