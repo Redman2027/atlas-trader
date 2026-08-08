@@ -181,7 +181,7 @@ def test_strong_daily_downtrend_flips_direction_against_5m_bounce():
 
     assert result["direction"] == "short"  # strong 4H/1D downtrend outweighs the 5M bounce
     assert result["trend_veto"] is False  # veto removed -- trend acts through composite weight now
-    assert result["should_trade"] is False  # confidence too low to clear the trade threshold
+    assert result["should_trade"] is True  # trend now carries 60% combined weight; a fully-aligned 4H/1D downtrend clears threshold outright, overriding the 5M bounce (no veto needed)
 
 
 def test_no_veto_when_trend_data_absent():
